@@ -8,6 +8,8 @@ venv/
 
 # Generated output
 audit_history.db
+audit_history.db-shm
+audit_history.db-wal
 AUDIT_REPORT.md
 audit_report.html
 audit_report.csv
@@ -15,3 +17,6 @@ audit_report.csv
 # Environment
 .env
 .claude/
+
+# Test cache
+.pytest_cache/
