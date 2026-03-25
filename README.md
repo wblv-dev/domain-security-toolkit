@@ -18,22 +18,47 @@ All checks are read-only. No changes are made to any zone.
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.10+ ([download](https://www.python.org/downloads/))
 - Cloudflare API token with `Zone:Read` and `DNS:Read` scopes
+
+### Installing Python
+
+If you don't have Python installed:
+
+| Platform | Method |
+|----------|--------|
+| **macOS** | `brew install python` ([Homebrew](https://brew.sh/)) or download from [python.org](https://www.python.org/downloads/macos/) |
+| **Ubuntu/Debian** | `sudo apt install python3 python3-pip python3-venv` |
+| **Windows** | Download from [python.org](https://www.python.org/downloads/windows/) — tick "Add to PATH" during install |
+
+Verify with `python3 --version` (or `python --version` on Windows).
+
+### Creating a Cloudflare API token
+
+1. Log in to the [Cloudflare dashboard](https://dash.cloudflare.com/)
+2. Go to **My Profile** → **API Tokens** → **Create Token**
+3. Use the **Custom token** template
+4. Set permissions: **Zone** → **Zone** → **Read** and **Zone** → **DNS** → **Read**
+5. Zone resources: **Include** → **All zones** (or select specific zones)
+6. Create the token and copy it
+
+See [Cloudflare API token docs](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) for full details.
 
 ## Setup
 
 ```bash
 git clone https://github.com/wblv-dev/cloudflare-reporting
 cd cloudflare-reporting
+python3 -m venv .venv
+source .venv/bin/activate        # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-export CF_API_TOKEN="your_token_here"
+export CF_API_TOKEN="your_token_here"   # On Windows: set CF_API_TOKEN=your_token_here
 ```
 
 ## Usage
 
 ```bash
-python audit.py
+python3 audit.py
 ```
 
 By default the tool **auto-discovers every zone** accessible to the API token.
@@ -126,7 +151,7 @@ To probe additional DKIM selectors for your mail provider, add them to
 
 ```bash
 pip install pytest
-python -m pytest tests/ -v
+python3 -m pytest tests/ -v
 ```
 
 ### Test coverage
@@ -193,3 +218,18 @@ ORDER BY r.id DESC;
 - RDAP is used for registrar checks (no API key required). Some ccTLDs may not support RDAP.
 - Blacklist checks skip cloud mail provider IPs (Google, Microsoft, etc.) as they
   are managed by the provider and not actionable.
+
+## References
+
+- [Python downloads](https://www.python.org/downloads/)
+- [pip documentation](https://pip.pypa.io/en/stable/installation/)
+- [Cloudflare API documentation](https://developers.cloudflare.com/api/)
+- [Creating a Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
+- [Cloudflare SSL/TLS settings](https://developers.cloudflare.com/ssl/)
+- [SPF record syntax](https://www.rfc-editor.org/rfc/rfc7208) (RFC 7208)
+- [DMARC specification](https://www.rfc-editor.org/rfc/rfc7489) (RFC 7489)
+- [DKIM specification](https://www.rfc-editor.org/rfc/rfc6376) (RFC 6376)
+- [CAA record format](https://www.rfc-editor.org/rfc/rfc8659) (RFC 8659)
+- [DNSSEC overview](https://www.cloudflare.com/dns/dnssec/how-dnssec-works/)
+- [RDAP (Registration Data Access Protocol)](https://about.rdap.org/)
+- [DNS-based blacklists (DNSBL)](https://www.spamhaus.org/faq/section/DNSBL%20Usage)
