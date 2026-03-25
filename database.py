@@ -7,10 +7,14 @@ connection is committed and closed cleanly on exit.
 
 Schema
 ------
-runs          — one row per audit execution (timestamp, domains audited)
-dns_records   — every DNS record per domain per run
-email_checks  — SPF / DMARC / DKIM results per domain per run
-zone_settings — security setting check results per domain per run
+runs              — one row per audit execution (timestamp, domains audited)
+dns_records       — every DNS record per domain per run
+email_checks      — SPF / DMARC / DKIM results per domain per run
+zone_settings     — security setting check results per domain per run
+registrar_checks  — WHOIS/RDAP domain registration checks per domain per run
+dns_security      — DNSSEC, CAA, dangling CNAME checks per domain per run
+blacklist_checks  — DNSBL results per domain per run
+reverse_dns       — PTR/rDNS results per domain per run
 """
 
 import json
@@ -66,6 +70,57 @@ CREATE TABLE IF NOT EXISTS zone_settings (
     grade       TEXT,
     note        TEXT,
     explanation TEXT
+);
+
+CREATE TABLE IF NOT EXISTS registrar_checks (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id          INTEGER NOT NULL REFERENCES runs(id),
+    domain          TEXT NOT NULL,
+    registrar       TEXT,
+    nameservers     TEXT,       -- JSON array
+    expiry_date     TEXT,
+    expiry_days     INTEGER,
+    expiry_grade    TEXT,
+    expiry_reason   TEXT,
+    lock_grade      TEXT,
+    lock_reason     TEXT,
+    lock_statuses   TEXT        -- JSON array
+);
+
+CREATE TABLE IF NOT EXISTS dns_security (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id          INTEGER NOT NULL REFERENCES runs(id),
+    domain          TEXT NOT NULL,
+    dnssec_grade    TEXT,
+    dnssec_reason   TEXT,
+    dnssec_dnskey   INTEGER,    -- 0 or 1
+    dnssec_ds       INTEGER,    -- 0 or 1
+    caa_grade       TEXT,
+    caa_reason      TEXT,
+    caa_records     TEXT,       -- JSON array
+    caa_cf_compat   INTEGER,    -- 0 or 1
+    dangling_grade  TEXT,
+    dangling_reason TEXT,
+    dangling_records TEXT       -- JSON array
+);
+
+CREATE TABLE IF NOT EXISTS blacklist_checks (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id          INTEGER NOT NULL REFERENCES runs(id),
+    domain          TEXT NOT NULL,
+    grade           TEXT,
+    reason          TEXT,
+    checked_ips     TEXT,       -- JSON array
+    listings        TEXT        -- JSON array
+);
+
+CREATE TABLE IF NOT EXISTS reverse_dns (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id          INTEGER NOT NULL REFERENCES runs(id),
+    domain          TEXT NOT NULL,
+    grade           TEXT,
+    reason          TEXT,
+    results         TEXT        -- JSON array of PTR check results
 );
 """
 
@@ -225,6 +280,149 @@ class Database:
             (run_id,),
         ).fetchall()
         return [dict(r) for r in rows]
+
+    # ── Registrar checks ─────────────────────────────────────────────────────
+
+    def save_registrar_check(self, run_id: int, result: Dict) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO registrar_checks (
+                run_id, domain, registrar, nameservers,
+                expiry_date, expiry_days, expiry_grade, expiry_reason,
+                lock_grade, lock_reason, lock_statuses
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                result["domain"],
+                result.get("registrar"),
+                json.dumps(result.get("nameservers", [])),
+                result["expiry"].get("expiry"),
+                result["expiry"].get("days_remaining"),
+                result["expiry"].get("grade"),
+                result["expiry"].get("reason"),
+                result["lock"].get("grade"),
+                result["lock"].get("reason"),
+                json.dumps(result["lock"].get("statuses", [])),
+            ),
+        )
+
+    def get_registrar_checks(self, run_id: int) -> List[Dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM registrar_checks WHERE run_id = ? ORDER BY domain",
+            (run_id,),
+        ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            d["nameservers"] = json.loads(d["nameservers"] or "[]")
+            d["lock_statuses"] = json.loads(d["lock_statuses"] or "[]")
+            results.append(d)
+        return results
+
+    # ── DNS security ─────────────────────────────────────────────────────────
+
+    def save_dns_security(self, run_id: int, result: Dict) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO dns_security (
+                run_id, domain,
+                dnssec_grade, dnssec_reason, dnssec_dnskey, dnssec_ds,
+                caa_grade, caa_reason, caa_records, caa_cf_compat,
+                dangling_grade, dangling_reason, dangling_records
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                result["domain"],
+                result["dnssec"].get("grade"),
+                result["dnssec"].get("reason"),
+                1 if result["dnssec"].get("has_dnskey") else 0,
+                1 if result["dnssec"].get("has_ds") else 0,
+                result["caa"].get("grade"),
+                result["caa"].get("reason"),
+                json.dumps(result["caa"].get("records", [])),
+                1 if result["caa"].get("cf_compatible") else 0,
+                result["dangling"].get("grade"),
+                result["dangling"].get("reason"),
+                json.dumps(result["dangling"].get("dangling", [])),
+            ),
+        )
+
+    def get_dns_security(self, run_id: int) -> List[Dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM dns_security WHERE run_id = ? ORDER BY domain",
+            (run_id,),
+        ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            d["caa_records"] = json.loads(d["caa_records"] or "[]")
+            d["dangling_records"] = json.loads(d["dangling_records"] or "[]")
+            results.append(d)
+        return results
+
+    # ── Blacklist checks ─────────────────────────────────────────────────────
+
+    def save_blacklist_check(self, run_id: int, result: Dict) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO blacklist_checks (
+                run_id, domain, grade, reason, checked_ips, listings
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                result["domain"],
+                result.get("grade"),
+                result.get("reason"),
+                json.dumps(result.get("checked_ips", [])),
+                json.dumps(result.get("listings", [])),
+            ),
+        )
+
+    def get_blacklist_checks(self, run_id: int) -> List[Dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM blacklist_checks WHERE run_id = ? ORDER BY domain",
+            (run_id,),
+        ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            d["checked_ips"] = json.loads(d["checked_ips"] or "[]")
+            d["listings"] = json.loads(d["listings"] or "[]")
+            results.append(d)
+        return results
+
+    # ── Reverse DNS ──────────────────────────────────────────────────────────
+
+    def save_reverse_dns(self, run_id: int, result: Dict) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO reverse_dns (
+                run_id, domain, grade, reason, results
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                result["domain"],
+                result.get("grade"),
+                result.get("reason"),
+                json.dumps(result.get("results", [])),
+            ),
+        )
+
+    def get_reverse_dns(self, run_id: int) -> List[Dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM reverse_dns WHERE run_id = ? ORDER BY domain",
+            (run_id,),
+        ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            d["results"] = json.loads(d["results"] or "[]")
+            results.append(d)
+        return results
 
     # ── History helpers ───────────────────────────────────────────────────────
 

@@ -54,18 +54,33 @@ def write_markdown(
     dns_results: Dict[str, dict],
     email_results: Dict[str, dict],
     security_results: Dict[str, dict],
+    registrar_results: Dict[str, dict],
+    dns_sec_results: Dict[str, dict],
+    blacklist_results: Dict[str, dict],
+    rdns_results: Dict[str, dict],
     output_path: str,
 ) -> None:
     sections = [
         _md_header(domains),
-        _md_executive_summary(domains, email_results, security_results, dns_results),
+        _md_executive_summary(
+            domains, email_results, security_results, dns_results,
+            registrar_results, dns_sec_results, blacklist_results, rdns_results,
+        ),
     ]
 
     for domain in domains:
+        if domain in registrar_results:
+            sections.append(_md_registrar(domain, registrar_results[domain]))
+        if domain in dns_sec_results:
+            sections.append(_md_dns_security(domain, dns_sec_results[domain]))
         if domain in dns_results:
             sections.append(_md_dns(domain, dns_results[domain]))
         if domain in email_results:
             sections.append(_md_email(domain, email_results[domain]))
+        if domain in blacklist_results:
+            sections.append(_md_blacklist(domain, blacklist_results[domain]))
+        if domain in rdns_results:
+            sections.append(_md_rdns(domain, rdns_results[domain]))
         if domain in security_results:
             sections.append(_md_security(domain, security_results[domain]))
 
@@ -93,27 +108,131 @@ def _md_header(domains: List[str]) -> str:
     )
 
 
-def _md_executive_summary(domains, email_results, security_results, dns_results) -> str:
-    lines = ["## Executive summary\n",
-             "| Domain | DNS records | Email | Zone security |",
-             "|--------|-------------|-------|---------------|"]
+def _md_executive_summary(
+    domains, email_results, security_results, dns_results,
+    registrar_results, dns_sec_results, blacklist_results, rdns_results,
+) -> str:
+    lines = [
+        "## Executive summary\n",
+        "| Domain | DNS | Email | Zone | Registrar | DNSSEC | CAA | Blacklist | rDNS |",
+        "|--------|-----|-------|------|-----------|--------|-----|-----------|------|",
+    ]
 
     for d in domains:
-        dns_count   = dns_results.get(d, {}).get("total", "?")
-        email       = email_results.get(d, {})
-        email_grade = _worst([email.get("spf", {}).get("grade", "INFO"),
-                               email.get("dmarc", {}).get("grade", "INFO")])
-        sec         = security_results.get(d)
+        dns_count = dns_results.get(d, {}).get("total", "?")
+
+        email = email_results.get(d, {})
+        email_grade = _worst([
+            email.get("spf", {}).get("grade", "INFO"),
+            email.get("dmarc", {}).get("grade", "INFO"),
+        ])
+
+        sec = security_results.get(d)
         if sec:
             passed, total = sec["score"]
-            sec_grades    = [r["grade"] for r in sec["results"]]
-            sec_cell      = f"{_sym(_worst(sec_grades))} ({passed}/{total})"
+            sec_cell = f"{_sym(_worst([r['grade'] for r in sec['results']]))} ({passed}/{total})"
         else:
             sec_cell = "—"
 
-        lines.append(f"| `{d}` | {dns_count} | {_sym(email_grade)} | {sec_cell} |")
+        reg = registrar_results.get(d, {})
+        reg_grade = _worst([
+            reg.get("expiry", {}).get("grade", "INFO"),
+            reg.get("lock", {}).get("grade", "INFO"),
+        ])
+
+        ds = dns_sec_results.get(d, {})
+        dnssec_g = ds.get("dnssec", {}).get("grade", "?")
+        caa_g = ds.get("caa", {}).get("grade", "?")
+
+        bl_g = blacklist_results.get(d, {}).get("grade", "?")
+        rdns_g = rdns_results.get(d, {}).get("grade", "?")
+
+        lines.append(
+            f"| `{d}` | {dns_count} | {_sym(email_grade)} | {sec_cell} "
+            f"| {_sym(reg_grade)} | {_sym(dnssec_g)} | {_sym(caa_g)} "
+            f"| {_sym(bl_g)} | {_sym(rdns_g)} |"
+        )
 
     return "\n".join(lines) + "\n\n---\n"
+
+
+def _md_registrar(domain: str, result: dict) -> str:
+    lines = [f"## Registrar — `{domain}`\n"]
+
+    if result.get("registrar"):
+        lines.append(f"**Registrar:** {result['registrar']}\n")
+
+    if result.get("nameservers"):
+        lines.append(f"**Nameservers:** {', '.join(f'`{ns}`' for ns in result['nameservers'])}\n")
+
+    exp = result.get("expiry", {})
+    lines.append(f"**Expiry:** {_sym(exp.get('grade', 'INFO'))} — {exp.get('reason', 'Unknown')}")
+    if exp.get("expiry"):
+        lines.append(f"  \n**Expiry date:** `{exp['expiry']}`")
+
+    lock = result.get("lock", {})
+    lines.append(f"\n**Transfer lock:** {_sym(lock.get('grade', 'INFO'))} — {lock.get('reason', 'Unknown')}")
+
+    return "\n".join(lines) + "\n\n"
+
+
+def _md_dns_security(domain: str, result: dict) -> str:
+    lines = [f"## DNS security — `{domain}`\n"]
+
+    dnssec = result.get("dnssec", {})
+    lines.append(f"**DNSSEC:** {_sym(dnssec.get('grade', 'INFO'))} — {dnssec.get('reason', '')}")
+
+    caa = result.get("caa", {})
+    lines.append(f"\n**CAA:** {_sym(caa.get('grade', 'INFO'))} — {caa.get('reason', '')}")
+
+    if caa.get("records"):
+        lines += ["\n| Flags | Tag | Value |", "|-------|-----|-------|"]
+        for r in caa["records"]:
+            lines.append(f"| {r.get('flags', '')} | `{r.get('tag', '')}` | `{r.get('value', '')}` |")
+
+    dangling = result.get("dangling", {})
+    lines.append(f"\n**Dangling CNAMEs:** {_sym(dangling.get('grade', 'INFO'))} — {dangling.get('reason', '')}")
+
+    if dangling.get("dangling"):
+        lines += ["\n| Record | Target |", "|--------|--------|"]
+        for d in dangling["dangling"]:
+            lines.append(f"| `{d['name']}` | `{d['target']}` |")
+
+    return "\n".join(lines) + "\n\n"
+
+
+def _md_blacklist(domain: str, result: dict) -> str:
+    lines = [
+        f"## Blacklist — `{domain}`\n",
+        f"**Status:** {_sym(result.get('grade', 'INFO'))} — {result.get('reason', '')}",
+    ]
+
+    listings = result.get("listings", [])
+    if listings:
+        lines += ["\n| IP | Blacklist | Reason |", "|-----|-----------|--------|"]
+        for l in listings:
+            lines.append(f"| `{l.get('ip', '')}` | {l.get('blacklist', '')} | {l.get('reason', '')} |")
+
+    return "\n".join(lines) + "\n\n"
+
+
+def _md_rdns(domain: str, result: dict) -> str:
+    lines = [
+        f"## Reverse DNS — `{domain}`\n",
+        f"**Status:** {_sym(result.get('grade', 'INFO'))} — {result.get('reason', '')}",
+    ]
+
+    ptr_results = result.get("results", [])
+    if ptr_results:
+        lines += ["\n| MX Host | IP | PTR | FCrDNS |", "|---------|-----|-----|--------|"]
+        for r in ptr_results:
+            fcrdns = "✅" if r.get("fcrdns") else "❌"
+            ptr = r.get("ptr") or "—"
+            lines.append(
+                f"| `{r.get('mx_host', '')}` | `{r.get('ip', '')}` | `{ptr}` | {fcrdns} |"
+            )
+
+    return "\n".join(lines) + "\n\n"
 
 
 def _md_dns(domain: str, summary: dict) -> str:
@@ -211,14 +330,25 @@ def write_html(
     dns_results: Dict[str, dict],
     email_results: Dict[str, dict],
     security_results: Dict[str, dict],
+    registrar_results: Dict[str, dict],
+    dns_sec_results: Dict[str, dict],
+    blacklist_results: Dict[str, dict],
+    rdns_results: Dict[str, dict],
     output_path: str,
 ) -> None:
     html = "\n".join([
         _html_head(),
         _html_header(domains),
-        _html_summary_cards(domains, email_results, security_results, dns_results),
+        _html_summary_cards(
+            domains, email_results, security_results, dns_results,
+            registrar_results, dns_sec_results, blacklist_results, rdns_results,
+        ),
+        _html_registrar_table(domains, registrar_results),
+        _html_dns_security_table(domains, dns_sec_results),
         _html_security_table(domains, security_results),
         _html_email_table(domains, email_results),
+        _html_blacklist_table(domains, blacklist_results),
+        _html_rdns_table(domains, rdns_results),
         _html_dns_tables(domains, dns_results),
         _html_footer(),
     ])
@@ -255,7 +385,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
 .container{max-width:1200px;margin:0 auto;padding:32px 20px}
 h2{font-size:1.4em;font-weight:600;color:#0f3460;margin:40px 0 16px;
   padding-bottom:8px;border-bottom:2px solid #e2e8f0}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:24px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:24px 0}
 .card{padding:24px;border-radius:10px;color:#fff}
 .card h3{font-size:.8em;text-transform:uppercase;letter-spacing:.5px;opacity:.9;margin-bottom:8px}
 .card .val{font-size:2.2em;font-weight:700}
@@ -304,25 +434,44 @@ def _html_header(domains: List[str]) -> str:
 <div class="container">"""
 
 
-def _html_summary_cards(domains, email_results, security_results, dns_results) -> str:
-    total_dns    = sum(dns_results.get(d, {}).get("total", 0) for d in domains)
+def _html_summary_cards(
+    domains, email_results, security_results, dns_results,
+    registrar_results, dns_sec_results, blacklist_results, rdns_results,
+) -> str:
+    total_dns = sum(dns_results.get(d, {}).get("total", 0) for d in domains)
+
     email_grades = []
     for d in domains:
         e = email_results.get(d, {})
         email_grades += [e.get("spf", {}).get("grade", "INFO"),
                          e.get("dmarc", {}).get("grade", "INFO")]
-
-    fail_count = sum(1 for g in email_grades if g == "FAIL")
-    warn_count = sum(1 for g in email_grades if g == "WARN")
-    pass_count = sum(1 for g in email_grades if g == "PASS")
+    email_fail = sum(1 for g in email_grades if g == "FAIL")
+    email_pass = sum(1 for g in email_grades if g == "PASS")
 
     sec_pass = sec_total = 0
     for d in domains:
         sec = security_results.get(d)
         if sec:
             p, t = sec["score"]
-            sec_pass  += p
+            sec_pass += p
             sec_total += t
+
+    # Collect all new check grades
+    all_new_grades = []
+    for d in domains:
+        reg = registrar_results.get(d, {})
+        all_new_grades.append(reg.get("expiry", {}).get("grade", "INFO"))
+        all_new_grades.append(reg.get("lock", {}).get("grade", "INFO"))
+        ds = dns_sec_results.get(d, {})
+        all_new_grades.append(ds.get("dnssec", {}).get("grade", "INFO"))
+        all_new_grades.append(ds.get("caa", {}).get("grade", "INFO"))
+        all_new_grades.append(ds.get("dangling", {}).get("grade", "INFO"))
+        all_new_grades.append(blacklist_results.get(d, {}).get("grade", "INFO"))
+        all_new_grades.append(rdns_results.get(d, {}).get("grade", "INFO"))
+
+    new_fail = sum(1 for g in all_new_grades if g == "FAIL")
+    new_warn = sum(1 for g in all_new_grades if g == "WARN")
+    new_pass = sum(1 for g in all_new_grades if g == "PASS")
 
     return f"""
 <h2>Executive summary</h2>
@@ -332,17 +481,88 @@ def _html_summary_cards(domains, email_results, security_results, dns_results) -
     <div class="val">{len(domains)}</div>
     <div class="sub">{total_dns} total DNS records</div>
   </div>
-  <div class="card {'c-green' if fail_count == 0 else 'c-red'}">
+  <div class="card {'c-green' if email_fail == 0 else 'c-red'}">
     <h3>Email security</h3>
-    <div class="val">{pass_count}</div>
-    <div class="sub">{warn_count} warn &nbsp;·&nbsp; {fail_count} fail</div>
+    <div class="val">{email_pass} pass</div>
+    <div class="sub">{email_fail} fail</div>
   </div>
   <div class="card {'c-green' if sec_total and sec_pass == sec_total else 'c-orange'}">
     <h3>Zone security</h3>
     <div class="val">{sec_pass}/{sec_total}</div>
     <div class="sub">checks passed</div>
   </div>
+  <div class="card {'c-green' if new_fail == 0 else 'c-red'}">
+    <h3>Infrastructure</h3>
+    <div class="val">{new_pass} pass</div>
+    <div class="sub">{new_warn} warn &nbsp;·&nbsp; {new_fail} fail</div>
+  </div>
 </div>"""
+
+
+def _html_registrar_table(domains, registrar_results) -> str:
+    if not registrar_results:
+        return ""
+
+    rows = ""
+    for domain in domains:
+        result = registrar_results.get(domain)
+        if not result:
+            continue
+
+        exp = result.get("expiry", {})
+        lock = result.get("lock", {})
+        ns = ", ".join(result.get("nameservers", [])[:4]) or "—"
+
+        rows += (
+            f"<tr><td><code>{domain}</code></td>"
+            f"<td>{result.get('registrar', '—')}</td>"
+            f"<td>{_badge(exp.get('grade', 'INFO'))} <small>{exp.get('reason', '')}</small></td>"
+            f"<td>{_badge(lock.get('grade', 'INFO'))} <small>{'Locked' if lock.get('locked') else 'Unlocked'}</small></td>"
+            f"<td><small>{ns}</small></td></tr>\n"
+        )
+
+    return f"""
+<h2>Registrar &amp; domain status</h2>
+<table>
+  <thead><tr>
+    <th>Domain</th><th>Registrar</th><th>Expiry</th>
+    <th>Transfer lock</th><th>Nameservers</th>
+  </tr></thead>
+  <tbody>{rows}</tbody>
+</table>"""
+
+
+def _html_dns_security_table(domains, dns_sec_results) -> str:
+    if not dns_sec_results:
+        return ""
+
+    rows = ""
+    for domain in domains:
+        result = dns_sec_results.get(domain)
+        if not result:
+            continue
+
+        dnssec = result.get("dnssec", {})
+        caa = result.get("caa", {})
+        dangling = result.get("dangling", {})
+        dang_count = len(dangling.get("dangling", []))
+
+        rows += (
+            f"<tr><td><code>{domain}</code></td>"
+            f"<td>{_badge(dnssec.get('grade', 'INFO'))} <small>{dnssec.get('reason', '')}</small></td>"
+            f"<td>{_badge(caa.get('grade', 'INFO'))} <small>{caa.get('reason', '')}</small></td>"
+            f"<td>{_badge(dangling.get('grade', 'INFO'))} "
+            f"<small>{dang_count} dangling</small></td></tr>\n"
+        )
+
+    return f"""
+<h2>DNS security</h2>
+<table>
+  <thead><tr>
+    <th>Domain</th><th>DNSSEC</th><th>CAA</th><th>Dangling CNAMEs</th>
+  </tr></thead>
+  <tbody>{rows}</tbody>
+</table>"""
 
 
 def _html_security_table(domains, security_results) -> str:
@@ -354,7 +574,6 @@ def _html_security_table(domains, security_results) -> str:
         sec = security_results.get(domain)
         if not sec:
             continue
-        passed, total = sec["score"]
         for r in sec["results"]:
             rows += (
                 f"<tr><td><code>{domain}</code></td>"
@@ -407,6 +626,77 @@ def _html_email_table(domains, email_results) -> str:
 <table>
   <thead><tr>
     <th>Domain</th><th>MX</th><th>SPF</th><th>DMARC</th><th>DKIM</th>
+  </tr></thead>
+  <tbody>{rows}</tbody>
+</table>"""
+
+
+def _html_blacklist_table(domains, blacklist_results) -> str:
+    if not blacklist_results:
+        return ""
+
+    rows = ""
+    for domain in domains:
+        result = blacklist_results.get(domain)
+        if not result:
+            continue
+
+        listings = result.get("listings", [])
+        detail = ""
+        if listings:
+            detail = "<br>".join(
+                f"<small>{l.get('ip','')} on {l.get('blacklist','')}</small>"
+                for l in listings[:5]
+            )
+
+        rows += (
+            f"<tr><td><code>{domain}</code></td>"
+            f"<td>{_badge(result.get('grade', 'INFO'))} "
+            f"<small>{result.get('reason', '')}</small></td>"
+            f"<td>{detail or '—'}</td></tr>\n"
+        )
+
+    return f"""
+<h2>Blacklist (DNSBL)</h2>
+<table>
+  <thead><tr>
+    <th>Domain</th><th>Status</th><th>Listings</th>
+  </tr></thead>
+  <tbody>{rows}</tbody>
+</table>"""
+
+
+def _html_rdns_table(domains, rdns_results) -> str:
+    if not rdns_results:
+        return ""
+
+    rows = ""
+    for domain in domains:
+        result = rdns_results.get(domain)
+        if not result:
+            continue
+
+        ptr_results = result.get("results", [])
+        detail = ""
+        if ptr_results:
+            detail = "<br>".join(
+                f"<small>{r.get('ip','')} → {r.get('ptr','—')} "
+                f"{'✅' if r.get('fcrdns') else '❌'}</small>"
+                for r in ptr_results[:5]
+            )
+
+        rows += (
+            f"<tr><td><code>{domain}</code></td>"
+            f"<td>{_badge(result.get('grade', 'INFO'))} "
+            f"<small>{result.get('reason', '')}</small></td>"
+            f"<td>{detail or '—'}</td></tr>\n"
+        )
+
+    return f"""
+<h2>Reverse DNS (PTR)</h2>
+<table>
+  <thead><tr>
+    <th>Domain</th><th>Status</th><th>Details</th>
   </tr></thead>
   <tbody>{rows}</tbody>
 </table>"""
