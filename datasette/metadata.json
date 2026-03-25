@@ -1,0 +1,85 @@
+{
+  "title": "Cloudflare Security Audit Dashboard",
+  "description": "Interactive dashboard for cloudflare-reporting audit results",
+  "databases": {
+    "audit_history": {
+      "tables": {
+        "runs": {
+          "label_column": "started_at",
+          "description": "One row per audit execution"
+        },
+        "dns_records": {
+          "description": "Every DNS record per domain per run"
+        },
+        "email_checks": {
+          "description": "SPF, DMARC, DKIM results per domain per run"
+        },
+        "zone_settings": {
+          "description": "Zone security check results per domain per run"
+        },
+        "registrar_checks": {
+          "description": "Domain expiry and transfer lock per domain per run"
+        },
+        "dns_security": {
+          "description": "DNSSEC, CAA, and dangling CNAME checks per domain per run"
+        },
+        "blacklist_checks": {
+          "description": "DNSBL blacklist results per domain per run"
+        },
+        "reverse_dns": {
+          "description": "PTR / reverse DNS results per domain per run"
+        },
+        "email_standards": {
+          "description": "MTA-STS, TLSRPT, BIMI results per domain per run"
+        }
+      },
+      "queries": {
+        "compliance-overview": {
+          "title": "Compliance Overview — Latest Run",
+          "description": "Grade distribution across all checks for the most recent audit run",
+          "sql": "SELECT grade, COUNT(*) as count FROM zone_settings WHERE run_id = (SELECT MAX(id) FROM runs) GROUP BY grade ORDER BY CASE grade WHEN 'FAIL' THEN 1 WHEN 'WARN' THEN 2 WHEN 'INFO' THEN 3 WHEN 'PASS' THEN 4 END"
+        },
+        "zone-security-latest": {
+          "title": "Zone Security — Latest Run",
+          "description": "All zone security checks from the most recent run",
+          "sql": "SELECT domain, label as check, recommended, actual, grade, note FROM zone_settings WHERE run_id = (SELECT MAX(id) FROM runs) ORDER BY domain, CASE grade WHEN 'FAIL' THEN 1 WHEN 'WARN' THEN 2 WHEN 'INFO' THEN 3 WHEN 'PASS' THEN 4 END"
+        },
+        "email-security-latest": {
+          "title": "Email Security — Latest Run",
+          "description": "SPF and DMARC grades for each domain from the most recent run",
+          "sql": "SELECT domain, spf_grade, spf_reason, dmarc_grade, dmarc_reason, dmarc_policy FROM email_checks WHERE run_id = (SELECT MAX(id) FROM runs) ORDER BY domain"
+        },
+        "all-failures": {
+          "title": "All Failures — Latest Run",
+          "description": "Every FAIL grade across all check types in the most recent run",
+          "sql": "SELECT 'Zone Security' as category, domain, label as check, actual, grade, note FROM zone_settings WHERE run_id = (SELECT MAX(id) FROM runs) AND grade = 'FAIL' UNION ALL SELECT 'Email' as category, domain, 'SPF' as check, spf_record as actual, spf_grade as grade, spf_reason as note FROM email_checks WHERE run_id = (SELECT MAX(id) FROM runs) AND spf_grade = 'FAIL' UNION ALL SELECT 'Email' as category, domain, 'DMARC' as check, dmarc_record as actual, dmarc_grade as grade, dmarc_reason as note FROM email_checks WHERE run_id = (SELECT MAX(id) FROM runs) AND dmarc_grade = 'FAIL' UNION ALL SELECT 'DNS Security' as category, domain, 'Dangling CNAME' as check, dangling_reason as actual, dangling_grade as grade, dangling_reason as note FROM dns_security WHERE run_id = (SELECT MAX(id) FROM runs) AND dangling_grade = 'FAIL' ORDER BY category, domain"
+        },
+        "grade-trend": {
+          "title": "Grade Trend Over Time",
+          "description": "How grades change across audit runs for a specific domain and check",
+          "sql": "SELECT r.started_at, zs.domain, zs.label, zs.grade, zs.actual FROM zone_settings zs JOIN runs r ON r.id = zs.run_id WHERE zs.domain = :domain AND zs.label = :check ORDER BY r.id DESC LIMIT 20"
+        },
+        "domain-summary": {
+          "title": "Domain Summary — Latest Run",
+          "description": "Per-domain grade overview across all check types",
+          "sql": "SELECT e.domain, e.spf_grade as SPF, e.dmarc_grade as DMARC, ds.dnssec_grade as DNSSEC, ds.caa_grade as CAA, ds.dangling_grade as 'Dangling CNAMEs', bl.grade as Blacklist, rd.grade as 'Reverse DNS', rc.expiry_grade as Expiry, rc.lock_grade as 'Transfer Lock', es.mta_sts_grade as 'MTA-STS', es.tlsrpt_grade as TLSRPT, es.bimi_grade as BIMI FROM email_checks e LEFT JOIN dns_security ds ON ds.run_id = e.run_id AND ds.domain = e.domain LEFT JOIN blacklist_checks bl ON bl.run_id = e.run_id AND bl.domain = e.domain LEFT JOIN reverse_dns rd ON rd.run_id = e.run_id AND rd.domain = e.domain LEFT JOIN registrar_checks rc ON rc.run_id = e.run_id AND rc.domain = e.domain LEFT JOIN email_standards es ON es.run_id = e.run_id AND es.domain = e.domain WHERE e.run_id = (SELECT MAX(id) FROM runs) ORDER BY e.domain"
+        },
+        "dns-record-count": {
+          "title": "DNS Records Per Domain — Latest Run",
+          "description": "Record count by type per domain",
+          "sql": "SELECT domain, type, COUNT(*) as count FROM dns_records WHERE run_id = (SELECT MAX(id) FROM runs) GROUP BY domain, type ORDER BY domain, count DESC"
+        },
+        "registrar-expiry": {
+          "title": "Domain Expiry Status",
+          "description": "Expiry dates and days remaining across all runs",
+          "sql": "SELECT r.started_at as audit_date, rc.domain, rc.expiry_days as days_remaining, rc.expiry_grade, rc.registrar, rc.lock_grade FROM registrar_checks rc JOIN runs r ON r.id = rc.run_id ORDER BY r.id DESC, rc.domain"
+        },
+        "audit-history": {
+          "title": "Audit Run History",
+          "description": "All previous audit runs with domain counts",
+          "sql": "SELECT r.id as run, r.started_at, r.domains, (SELECT COUNT(DISTINCT domain) FROM zone_settings WHERE run_id = r.id) as domains_checked, (SELECT COUNT(*) FROM zone_settings WHERE run_id = r.id AND grade = 'FAIL') as failures, (SELECT COUNT(*) FROM zone_settings WHERE run_id = r.id AND grade = 'WARN') as warnings, (SELECT COUNT(*) FROM zone_settings WHERE run_id = r.id AND grade = 'PASS') as passes FROM runs r ORDER BY r.id DESC"
+        }
+      }
+    }
+  }
+}

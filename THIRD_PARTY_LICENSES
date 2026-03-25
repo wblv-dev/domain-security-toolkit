@@ -1,0 +1,21 @@
+This project includes or depends on the following third-party software:
+
+Datasette
+  License: Apache License 2.0
+  Copyright: Simon Willison
+  https://github.com/simonw/datasette
+
+datasette-vega
+  License: Apache License 2.0
+  Copyright: Simon Willison
+  https://github.com/simonw/datasette-vega
+
+aiohttp
+  License: Apache License 2.0
+  Copyright: aiohttp contributors
+  https://github.com/aio-libs/aiohttp
+
+dnspython
+  License: ISC License
+  Copyright: Bob Halley
+  https://github.com/rthalley/dnspython

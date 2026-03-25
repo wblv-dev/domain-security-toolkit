@@ -120,6 +120,7 @@ options:
   --verbose, -v                   Enable debug logging
   --log-file FILE                 Write detailed log to file
   --no-diff                       Skip comparison with previous run
+  --concurrency N                 Max domains to process concurrently (default: 20)
 ```
 
 **Exit codes:** `0` = all checks passed or warned, `2` = at least one FAIL grade (useful for CI/cron alerting).
@@ -128,10 +129,28 @@ Four output files are generated:
 
 | File | Format | Description |
 |------|--------|-------------|
-| `audit_report.html` | HTML | Interactive dashboard with tabs, search, dark mode |
+| `audit_report.html` | HTML | Static report with tabs, search, dark mode, remediations |
 | `AUDIT_REPORT.md` | Markdown | Git-friendly, human-readable |
 | `audit_report.csv` | CSV | One row per domain — for spreadsheets or automation |
 | `audit_history.db` | SQLite | Cumulative history across runs |
+
+### 5. Launch the dashboard (optional)
+
+For an interactive, queryable dashboard with charts, install Datasette:
+
+```bash
+pip install -r requirements-dashboard.txt
+python dashboard.py
+```
+
+Opens at [http://localhost:8001](http://localhost:8001) with:
+- Pre-built queries (compliance overview, all failures, grade trends, domain summary)
+- Sortable/filterable tables for every check type
+- SQL editor for custom queries
+- Charts via datasette-vega plugin
+- Full audit history across runs
+
+> Datasette is optional — the audit tool works without it. The static HTML/MD/CSV reports are always generated.
 
 ---
 
@@ -201,8 +220,10 @@ All API and DNS checks run concurrently using `asyncio` — a 50-zone account ty
 ```
 cloudflare-reporting/
 ├── audit.py                  # Entry point — async orchestrator
+├── dashboard.py              # Launch Datasette dashboard
 ├── config.py                 # Domains, token, output paths
-├── requirements.txt          # aiohttp, dnspython
+├── requirements.txt          # Core dependencies (aiohttp, dnspython)
+├── requirements-dashboard.txt # Optional dashboard (datasette)          # aiohttp, dnspython
 │
 ├── checks/                   # One module per check category
 │   ├── blacklist.py          #   DNSBL checks for mail server IPs
@@ -216,13 +237,17 @@ cloudflare-reporting/
 │
 ├── lib/                      # Shared infrastructure
 │   ├── cf_client.py          #   Async Cloudflare API client + retry/backoff
+│   ├── concurrency.py        #   Semaphore-based throttling for large accounts
 │   ├── database.py           #   SQLite persistence layer
 │   ├── diff.py               #   Run-to-run comparison engine
 │   ├── dns_resolver.py       #   dnspython wrapper + grading functions
 │   ├── log.py                #   Structured logging
+│   ├── remediation.py        #   Fix instructions and tooltips for findings
 │   └── reporter.py           #   HTML, Markdown, and CSV report generation
+├── datasette/
+│   └── metadata.json         #   Dashboard queries and config
 │
-└── tests/                    # 163 tests (pytest)
+└── tests/                    # 203 tests (pytest)
     ├── test_blacklist.py
     ├── test_database.py
     ├── test_database_new.py

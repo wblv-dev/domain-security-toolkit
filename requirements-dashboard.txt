@@ -1,0 +1,2 @@
+datasette>=0.64
+datasette-vega>=0.6
