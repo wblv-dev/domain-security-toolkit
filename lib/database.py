@@ -122,6 +122,21 @@ CREATE TABLE IF NOT EXISTS reverse_dns (
     reason          TEXT,
     results         TEXT        -- JSON array of PTR check results
 );
+
+CREATE TABLE IF NOT EXISTS email_standards (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id          INTEGER NOT NULL REFERENCES runs(id),
+    domain          TEXT NOT NULL,
+    mta_sts_grade   TEXT,
+    mta_sts_reason  TEXT,
+    mta_sts_mode    TEXT,
+    tlsrpt_grade    TEXT,
+    tlsrpt_reason   TEXT,
+    tlsrpt_rua      TEXT,
+    bimi_grade      TEXT,
+    bimi_reason     TEXT,
+    bimi_logo       TEXT
+);
 """
 
 
@@ -423,6 +438,40 @@ class Database:
             d["results"] = json.loads(d["results"] or "[]")
             results.append(d)
         return results
+
+    # ── Email standards ───────────────────────────────────────────────────────
+
+    def save_email_standards(self, run_id: int, result: Dict) -> None:
+        self.conn.execute(
+            """
+            INSERT INTO email_standards (
+                run_id, domain,
+                mta_sts_grade, mta_sts_reason, mta_sts_mode,
+                tlsrpt_grade, tlsrpt_reason, tlsrpt_rua,
+                bimi_grade, bimi_reason, bimi_logo
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                result["domain"],
+                result.get("mta_sts", {}).get("grade"),
+                result.get("mta_sts", {}).get("reason"),
+                result.get("mta_sts", {}).get("mode"),
+                result.get("tlsrpt", {}).get("grade"),
+                result.get("tlsrpt", {}).get("reason"),
+                result.get("tlsrpt", {}).get("rua"),
+                result.get("bimi", {}).get("grade"),
+                result.get("bimi", {}).get("reason"),
+                result.get("bimi", {}).get("logo"),
+            ),
+        )
+
+    def get_email_standards(self, run_id: int) -> List[Dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM email_standards WHERE run_id = ? ORDER BY domain",
+            (run_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     # ── History helpers ───────────────────────────────────────────────────────
 

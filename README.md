@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/cloudflare-free%20plan-f38020?logo=cloudflare&logoColor=white" alt="Cloudflare Free Plan">
-  <img src="https://img.shields.io/badge/tests-163%20passing-brightgreen" alt="163 tests passing">
+  <img src="https://img.shields.io/badge/tests-190%20passing-brightgreen" alt="190 tests passing">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
   <img src="https://img.shields.io/badge/read--only-no%20changes%20made-informational" alt="Read-only">
 </p>
@@ -108,6 +108,22 @@ $env:CF_API_TOKEN="your_token_here"
 python audit.py
 ```
 
+### CLI options
+
+```
+python3 audit.py --help
+
+options:
+  --domains DOMAIN [DOMAIN ...]   Specific domains to audit (default: auto-discover all)
+  --output-dir DIR                Directory for output files (default: current)
+  --format {html,md,csv}          Output formats (default: all three)
+  --verbose, -v                   Enable debug logging
+  --log-file FILE                 Write detailed log to file
+  --no-diff                       Skip comparison with previous run
+```
+
+**Exit codes:** `0` = all checks passed or warned, `2` = at least one FAIL grade (useful for CI/cron alerting).
+
 Four output files are generated:
 
 | File | Format | Description |
@@ -151,6 +167,9 @@ Uses a single bulk `GET /zones/{id}/settings` call per zone:
 | Dangling CNAMEs | Resolve all CNAME targets | Subdomain takeover risk (target returns NXDOMAIN) |
 | Blacklist (DNSBL) | Reverse lookup against 6 lists | Mail server IPs on Spamhaus, SpamCop, Barracuda, etc. |
 | Reverse DNS | PTR + forward confirmation | Missing PTR records on mail servers |
+| MTA-STS | TXT at `_mta-sts.` + HTTPS policy fetch | Broken MTA-STS configs, enforce vs testing mode |
+| TLSRPT | TXT at `_smtp._tls.` | Missing TLS reporting destination |
+| BIMI | TXT at `default._bimi.` | Brand logo presence, VMC certificate |
 
 ### Registrar (via RDAP)
 
@@ -190,6 +209,7 @@ cloudflare-reporting/
 │   ├── dns_inventory.py      #   DNS record fetching via Cloudflare API
 │   ├── dns_security.py       #   DNSSEC, CAA, dangling CNAME detection
 │   ├── email_security.py     #   MX, SPF, DMARC, DKIM validation
+│   ├── email_standards.py    #   MTA-STS, TLSRPT, BIMI checks
 │   ├── registrar.py          #   Domain expiry + lock via RDAP
 │   ├── reverse_dns.py        #   PTR / forward-confirmed rDNS
 │   └── zone_security.py      #   TLS, HSTS, security settings (bulk API)
@@ -197,7 +217,9 @@ cloudflare-reporting/
 ├── lib/                      # Shared infrastructure
 │   ├── cf_client.py          #   Async Cloudflare API client + retry/backoff
 │   ├── database.py           #   SQLite persistence layer
+│   ├── diff.py               #   Run-to-run comparison engine
 │   ├── dns_resolver.py       #   dnspython wrapper + grading functions
+│   ├── log.py                #   Structured logging
 │   └── reporter.py           #   HTML, Markdown, and CSV report generation
 │
 └── tests/                    # 163 tests (pytest)
@@ -322,6 +344,8 @@ python -m pytest tests/ -v          # Windows
 | `test_reverse_dns.py` | 7 | PTR grading |
 | `test_database_new.py` | 5 | Registrar, DNS security, blacklist, rDNS persistence |
 | `test_dns_inventory.py` | 4 | Record summarisation |
+| `test_email_standards.py` | 17 | MTA-STS grading (enforce/testing/none/unreachable), TLSRPT (valid/malformed), BIMI (full/logo-only/malformed) |
+| `test_diff.py` | 10 | Run comparison (first run, identical, regression, improvement, DNS added/removed, multi-category, formatting) |
 
 ---
 

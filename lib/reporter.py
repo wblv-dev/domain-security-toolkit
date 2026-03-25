@@ -63,7 +63,8 @@ def write_markdown(
     dns_sec_results: Dict[str, dict],
     blacklist_results: Dict[str, dict],
     rdns_results: Dict[str, dict],
-    output_path: str,
+    email_std_results: Dict[str, dict] = None,
+    output_path: str = "",
 ) -> None:
     sections = [
         _md_header(domains),
@@ -86,6 +87,8 @@ def write_markdown(
             sections.append(_md_blacklist(domain, blacklist_results[domain]))
         if domain in rdns_results:
             sections.append(_md_rdns(domain, rdns_results[domain]))
+        if email_std_results and domain in email_std_results:
+            sections.append(_md_email_standards(domain, email_std_results[domain]))
         if domain in security_results:
             sections.append(_md_security(domain, security_results[domain]))
 
@@ -240,6 +243,25 @@ def _md_rdns(domain: str, result: dict) -> str:
     return "\n".join(lines) + "\n\n"
 
 
+def _md_email_standards(domain: str, result: dict) -> str:
+    lines = [f"## Email standards — `{domain}`\n"]
+
+    mta = result.get("mta_sts", {})
+    lines.append(f"**MTA-STS:** {_sym(mta.get('grade', 'INFO'))} — {mta.get('reason', '')}")
+    if mta.get("mode"):
+        lines.append(f"  \n**Mode:** `{mta['mode']}`")
+
+    tls = result.get("tlsrpt", {})
+    lines.append(f"\n**TLSRPT:** {_sym(tls.get('grade', 'INFO'))} — {tls.get('reason', '')}")
+    if tls.get("rua"):
+        lines.append(f"  \n**Reporting:** `{tls['rua']}`")
+
+    bimi = result.get("bimi", {})
+    lines.append(f"\n**BIMI:** {_sym(bimi.get('grade', 'INFO'))} — {bimi.get('reason', '')}")
+
+    return "\n".join(lines) + "\n\n"
+
+
 def _md_dns(domain: str, summary: dict) -> str:
     lines = [f"## DNS inventory — `{domain}`\n",
              f"**Total:** {summary['total']} records  "
@@ -339,7 +361,8 @@ def write_csv(
     dns_sec_results: Dict[str, dict],
     blacklist_results: Dict[str, dict],
     rdns_results: Dict[str, dict],
-    output_path: str,
+    email_std_results: Dict[str, dict] = None,
+    output_path: str = "",
 ) -> None:
     """Write a CSV compliance summary — one row per domain."""
     fieldnames = [
@@ -349,8 +372,10 @@ def write_csv(
         "Registrar", "Expiry", "Expiry Days", "Transfer Lock",
         "DNSSEC", "CAA", "Dangling CNAMEs",
         "Blacklist", "Reverse DNS",
+        "MTA-STS", "TLSRPT", "BIMI",
     ]
 
+    _estd = email_std_results or {}
     rows = []
     for d in domains:
         dns = dns_results.get(d, {})
@@ -360,6 +385,7 @@ def write_csv(
         ds = dns_sec_results.get(d, {})
         bl = blacklist_results.get(d, {})
         rdns = rdns_results.get(d, {})
+        es = _estd.get(d, {})
 
         passed, total = sec.get("score", (0, 0))
 
@@ -381,6 +407,9 @@ def write_csv(
             "Dangling CNAMEs": len(ds.get("dangling", {}).get("dangling", [])),
             "Blacklist":       bl.get("grade", ""),
             "Reverse DNS":     rdns.get("grade", ""),
+            "MTA-STS":         es.get("mta_sts", {}).get("grade", ""),
+            "TLSRPT":          es.get("tlsrpt", {}).get("grade", ""),
+            "BIMI":            es.get("bimi", {}).get("grade", ""),
         })
 
     with open(output_path, "w", newline="", encoding="utf-8") as f:
@@ -404,7 +433,8 @@ def write_html(
     dns_sec_results: Dict[str, dict],
     blacklist_results: Dict[str, dict],
     rdns_results: Dict[str, dict],
-    output_path: str,
+    email_std_results: Dict[str, dict] = None,
+    output_path: str = "",
 ) -> None:
     html = "\n".join([
         _html_head(),
@@ -430,6 +460,7 @@ def write_html(
         # Tab: Email
         '<div class="tab-panel" id="tab-email" role="tabpanel">',
         _html_email_table(domains, email_results),
+        _html_email_standards_table(domains, email_std_results or {}),
         '</div>',
         # Tab: DNS Security
         '<div class="tab-panel" id="tab-dnssec" role="tabpanel">',
@@ -1211,6 +1242,41 @@ def _html_rdns_table(domains, rdns_results) -> str:
     <th>Domain <span class="sort-arrow"></span></th>
     <th>Status <span class="sort-arrow"></span></th>
     <th>Details <span class="sort-arrow"></span></th>
+  </tr></thead>
+  <tbody>{rows}</tbody>
+</table>"""
+
+
+def _html_email_standards_table(domains, email_std_results) -> str:
+    if not email_std_results:
+        return ""
+
+    rows = ""
+    for domain in domains:
+        result = email_std_results.get(domain)
+        if not result:
+            continue
+
+        mta = result.get("mta_sts", {})
+        tls = result.get("tlsrpt", {})
+        bimi = result.get("bimi", {})
+
+        rows += (
+            f'<tr data-domain="{_esc(domain)}">'
+            f"<td><code>{_esc(domain)}</code></td>"
+            f"<td>{_badge(mta.get('grade', 'INFO'))} "
+            f"<small>{_esc(mta.get('reason', ''))}</small></td>"
+            f"<td>{_badge(tls.get('grade', 'INFO'))} "
+            f"<small>{_esc(tls.get('reason', ''))}</small></td>"
+            f"<td>{_badge(bimi.get('grade', 'INFO'))} "
+            f"<small>{_esc(bimi.get('reason', ''))}</small></td></tr>\n"
+        )
+
+    return f"""
+<h2>Email standards (MTA-STS / TLSRPT / BIMI)</h2>
+<table class="sortable">
+  <thead><tr>
+    <th>Domain</th><th>MTA-STS</th><th>TLSRPT</th><th>BIMI</th>
   </tr></thead>
   <tbody>{rows}</tbody>
 </table>"""
