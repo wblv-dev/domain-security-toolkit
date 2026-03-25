@@ -52,7 +52,8 @@ cd cloudflare-reporting
 python3 -m venv .venv
 source .venv/bin/activate        # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-export CF_API_TOKEN="your_token_here"   # On Windows: set CF_API_TOKEN=your_token_here
+export CF_API_TOKEN="your_token_here"
+# On Windows use: set CF_API_TOKEN=your_token_here
 ```
 
 ## Usage
