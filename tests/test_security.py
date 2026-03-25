@@ -73,7 +73,7 @@ class TestCredentialLeakage:
     def test_config_token_from_env_not_hardcoded(self):
         """CF_API_TOKEN must be loaded from environment, never hardcoded."""
         import ast
-        with open("config.py") as f:
+        with open("config.py", encoding="utf-8") as f:
             tree = ast.parse(f.read())
 
         for node in ast.walk(tree):
@@ -401,7 +401,7 @@ class TestConfigurationSecurity:
     def test_default_token_is_empty(self):
         """Default token must be empty string, not a real value."""
         import ast
-        with open("config.py") as f:
+        with open("config.py", encoding="utf-8") as f:
             source = f.read()
         assert 'os.getenv("CF_API_TOKEN"' in source or "os.getenv('CF_API_TOKEN'" in source
 
@@ -418,7 +418,7 @@ class TestConfigurationSecurity:
         for pattern in glob.glob("**/*.py", recursive=True):
             if "test_security.py" in pattern:
                 continue  # Skip this file (contains the patterns as strings)
-            with open(pattern) as f:
+            with open(pattern, encoding="utf-8") as f:
                 content = f.read()
             for secret in secret_patterns:
                 assert secret not in content, \
@@ -426,7 +426,7 @@ class TestConfigurationSecurity:
 
     def test_gitignore_covers_sensitive_files(self):
         """Gitignore must exclude generated output and environment files."""
-        with open(".gitignore") as f:
+        with open(".gitignore", encoding="utf-8") as f:
             gitignore = f.read()
         required = ["audit_history.db", ".env", "AUDIT_REPORT.md",
                      "audit_report.html", "audit_report.csv"]
