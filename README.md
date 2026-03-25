@@ -38,7 +38,7 @@ Verify with `git --version`.
 |----------|--------|
 | **macOS** | `brew install python` ([Homebrew](https://brew.sh/)) or download from [python.org](https://www.python.org/downloads/macos/) |
 | **Ubuntu/Debian** | `sudo apt install python3 python3-pip python3-venv` |
-| **Windows** | `winget install Python.Python.3.12` or download from [python.org](https://www.python.org/downloads/windows/) — tick **"Add python.exe to PATH"** on the first installer screen. **Close and reopen PowerShell** after installing. |
+| **Windows** | Search **"Python"** in the Microsoft Store and install (recommended — handles PATH automatically), or `winget install Python.Python.3.12`, or download from [python.org](https://www.python.org/downloads/windows/) (tick **"Add python.exe to PATH"**). Reopen PowerShell if needed. |
 
 Verify with `python3 --version` (or `python --version` on Windows).
 
