@@ -10,7 +10,7 @@ from typing import Dict, List
 
 import dns.reversename
 
-import dns_resolver as resolver
+from lib import dns_resolver as resolver
 
 
 def _ptr_lookup(ip: str) -> List[str]:

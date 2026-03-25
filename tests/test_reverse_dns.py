@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from reverse_dns import grade_reverse_dns
+from checks.reverse_dns import grade_reverse_dns
 
 
 class TestGradeReverseDns:

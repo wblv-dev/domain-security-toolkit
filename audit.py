@@ -22,16 +22,16 @@ import asyncio
 import sys
 
 import config
-import cf_client
-import dns_inventory
-import email_security
-import zone_security
-import registrar
-import dns_security
-import blacklist
-import reverse_dns
-import reporter
-from database import Database
+from lib import cf_client
+from lib import reporter
+from lib.database import Database
+from checks import dns_inventory
+from checks import email_security
+from checks import zone_security
+from checks import registrar
+from checks import dns_security
+from checks import blacklist
+from checks import reverse_dns
 
 
 async def _run_audit():

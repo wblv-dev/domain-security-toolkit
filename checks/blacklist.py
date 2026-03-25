@@ -8,7 +8,7 @@ public DNS blacklists. All checks are pure DNS lookups.
 import asyncio
 from typing import Dict, List, Optional
 
-import dns_resolver as resolver
+from lib import dns_resolver as resolver
 
 
 # Major public DNSBLs — free for low-volume/non-commercial use

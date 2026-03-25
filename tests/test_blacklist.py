@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from blacklist import _reverse_ip, _is_cloud_mail, grade_blacklist
+from checks.blacklist import _reverse_ip, _is_cloud_mail, grade_blacklist
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

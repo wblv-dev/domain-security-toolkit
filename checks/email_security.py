@@ -9,7 +9,7 @@ Runs all domain checks concurrently via asyncio.
 import asyncio
 from typing import Dict, List
 
-import dns_resolver
+from lib import dns_resolver
 
 
 DKIM_SELECTORS = [

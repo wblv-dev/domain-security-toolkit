@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 
 import aiohttp
 
-from cf_client import cf_get
+from lib.cf_client import cf_get
 
 
 CHECKS = [

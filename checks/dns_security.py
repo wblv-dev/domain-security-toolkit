@@ -15,7 +15,7 @@ import dns.message
 import dns.query
 
 import config
-import dns_resolver as resolver
+from lib import dns_resolver as resolver
 
 
 # Cloudflare-compatible CAs (used for edge certificate issuance)

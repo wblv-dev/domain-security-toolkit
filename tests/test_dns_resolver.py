@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from dns_resolver import grade_spf, grade_dmarc
+from lib.dns_resolver import grade_spf, grade_dmarc
 
 
 # ── SPF grading ──────────────────────────────────────────────────────────────

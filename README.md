@@ -101,22 +101,25 @@ To probe additional DKIM selectors for your mail provider, add them to
 
 ## Structure
 
-| File | Purpose |
-|------|---------|
-| `audit.py` | Entry point — async orchestrator |
-| `config.py` | Domains, token, output paths |
-| `cf_client.py` | Async aiohttp Cloudflare API client with retry/backoff |
-| `dns_resolver.py` | Live DNS lookups and grading (dnspython) |
-| `dns_inventory.py` | Fetches and summarises all DNS records via API |
-| `email_security.py` | MX / SPF / DMARC / DKIM checks (async) |
-| `zone_security.py` | SSL, TLS, HSTS and security settings (async) |
-| `registrar.py` | Domain registration checks via RDAP |
-| `dns_security.py` | DNSSEC, CAA, and dangling CNAME checks |
-| `blacklist.py` | DNSBL checks for mail server IPs |
-| `reverse_dns.py` | PTR / rDNS validation for mail servers |
-| `database.py` | SQLite persistence — single connection, context manager |
-| `reporter.py` | Writes Markdown and HTML reports |
-| `tests/` | Unit tests (pytest) — 113 tests |
+```
+├── audit.py                  # Entry point — async orchestrator
+├── config.py                 # Domains, token, output paths
+├── requirements.txt
+├── checks/                   # Audit check modules
+│   ├── blacklist.py          #   DNSBL checks for mail server IPs
+│   ├── dns_inventory.py      #   Fetches and summarises all DNS records via API
+│   ├── dns_security.py       #   DNSSEC, CAA, and dangling CNAME checks
+│   ├── email_security.py     #   MX / SPF / DMARC / DKIM checks (async)
+│   ├── registrar.py          #   Domain registration checks via RDAP
+│   ├── reverse_dns.py        #   PTR / rDNS validation for mail servers
+│   └── zone_security.py      #   SSL, TLS, HSTS and security settings (async)
+├── lib/                      # Shared infrastructure
+│   ├── cf_client.py          #   Async aiohttp Cloudflare API client with retry/backoff
+│   ├── database.py           #   SQLite persistence — single connection, context manager
+│   ├── dns_resolver.py       #   Live DNS lookups and grading (dnspython)
+│   └── reporter.py           #   Writes Markdown and HTML reports
+└── tests/                    # Unit tests (pytest) — 113 tests
+```
 
 ## Testing
 

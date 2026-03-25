@@ -6,7 +6,7 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from database import Database
+from lib.database import Database
 
 
 class TestDatabase:

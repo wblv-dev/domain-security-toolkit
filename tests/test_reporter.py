@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from reporter import _worst, _sym, _truncate, _badge, GRADE_SYMBOL
+from lib.reporter import _worst, _sym, _truncate, _badge, GRADE_SYMBOL
 
 
 class TestWorst:

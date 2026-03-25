@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from zone_security import _grade, _grade_hsts, CHECKS
+from checks.zone_security import _grade, _grade_hsts, CHECKS
 
 
 class TestGrade:

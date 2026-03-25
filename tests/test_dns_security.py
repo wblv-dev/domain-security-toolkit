@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from dns_security import grade_dnssec, grade_caa, grade_dangling
+from checks.dns_security import grade_dnssec, grade_caa, grade_dangling
 
 
 # ── DNSSEC grading ───────────────────────────────────────────────────────────

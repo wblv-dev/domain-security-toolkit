@@ -10,7 +10,7 @@ from typing import Dict, List
 
 import aiohttp
 
-from cf_client import paginate
+from lib.cf_client import paginate
 
 
 NOTABLE_TYPES = {"A", "AAAA", "CNAME", "MX", "TXT", "NS", "SRV", "CAA"}

@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from dns_inventory import summarise
+from checks.dns_inventory import summarise
 
 
 class TestSummarise:

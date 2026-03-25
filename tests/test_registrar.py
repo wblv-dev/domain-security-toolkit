@@ -6,7 +6,7 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from registrar import (
+from checks.registrar import (
     grade_expiry,
     grade_lock,
     _parse_expiry,
