@@ -28,7 +28,7 @@ All checks are read-only. No changes are made to any zone.
 |----------|--------|
 | **macOS** | `brew install git` or `xcode-select --install` (includes Git) |
 | **Ubuntu/Debian** | `sudo apt install git` |
-| **Windows** | Download from [git-scm.com](https://git-scm.com/downloads/win) — use the default options during install |
+| **Windows** | Download from [git-scm.com](https://git-scm.com/downloads/win) — use the default options during install. **Close and reopen PowerShell** after installing so it picks up the new PATH. |
 
 Verify with `git --version`.
 
