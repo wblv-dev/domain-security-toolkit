@@ -230,19 +230,22 @@ def _check_domain_sync(domain: str) -> dict:
 
 async def _fetch_mta_sts_policy(domain: str) -> Optional[str]:
     """
-    Fetch the MTA-STS policy file over HTTPS.
+    Fetch the MTA-STS policy file over HTTPS, throttled.
 
     IMPORTANT: Uses its own aiohttp session with NO auth headers.
     The Cloudflare session must never be reused here — it carries
     the CF API token which would be leaked to the target domain.
     """
+    from lib.concurrency import sem
+
     url = f"https://mta-sts.{domain}/.well-known/mta-sts.txt"
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
-                if r.status != 200:
-                    return None
-                return await r.text()
+        async with sem.http:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
+                    if r.status != 200:
+                        return None
+                    return await r.text()
     except Exception:
         return None
 
@@ -250,11 +253,11 @@ async def _fetch_mta_sts_policy(domain: str) -> Optional[str]:
 # ── Public async interface ───────────────────────────────────────────────────
 
 async def check_domain(domain: str) -> dict:
-    """Run all email standards checks for a single domain."""
-    loop = asyncio.get_event_loop()
+    """Run all email standards checks for a single domain, throttled."""
+    from lib.concurrency import run_in_executor_throttled
 
-    # DNS lookups in a thread pool (blocking I/O)
-    dns_result = await loop.run_in_executor(None, _check_domain_sync, domain)
+    # DNS lookups in a thread pool (blocking I/O), throttled
+    dns_result = await run_in_executor_throttled(_check_domain_sync, domain)
 
     # Fetch MTA-STS policy over HTTPS only if the TXT record exists
     policy_text = None
@@ -279,15 +282,8 @@ async def check_domain(domain: str) -> dict:
 
 
 async def check_all(domains: List[str]) -> Dict[str, dict]:
-    """Run email standards checks for all domains concurrently."""
-    tasks = {
-        domain: asyncio.create_task(check_domain(domain))
-        for domain in domains
-    }
-    results = {}
-    for domain, task in tasks.items():
-        try:
-            results[domain] = await task
-        except Exception as e:
-            print(f"  [ERROR] Email standards check failed for {domain}: {e}")
-    return results
+    """Run email standards checks for all domains, throttled."""
+    from lib.concurrency import throttled_gather
+    return await throttled_gather(
+        {d: check_domain(d) for d in domains}, label="Email standards check"
+    )

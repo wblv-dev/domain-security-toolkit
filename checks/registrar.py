@@ -28,23 +28,39 @@ EXPIRY_FAIL_DAYS = 30
 EXPIRY_WARN_DAYS = 90
 
 
-async def _fetch_rdap(domain: str) -> Optional[dict]:
+async def _fetch_rdap(domain: str, max_retries: int = 3) -> Optional[dict]:
     """
     Fetch RDAP data for a domain using a dedicated session.
 
     IMPORTANT: Uses its own aiohttp session with NO auth headers.
     The Cloudflare session must never be reused here — it carries
     the CF API token which would be leaked to rdap.org.
+
+    Throttled by the RDAP semaphore and retries on 429/5xx.
     """
+    from lib.concurrency import sem
+
     url = f"{RDAP_BOOTSTRAP}/{domain}"
-    try:
-        async with aiohttp.ClientSession() as rdap_session:
-            async with rdap_session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
-                if r.status != 200:
-                    return None
-                return await r.json(content_type=None)
-    except Exception:
-        return None
+    for attempt in range(1, max_retries + 1):
+        try:
+            async with sem.rdap:
+                async with aiohttp.ClientSession() as rdap_session:
+                    async with rdap_session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
+                        if r.status == 429 or r.status >= 500:
+                            if attempt < max_retries:
+                                wait = 2 ** attempt
+                                await asyncio.sleep(wait)
+                                continue
+                            return None
+                        if r.status != 200:
+                            return None
+                        return await r.json(content_type=None)
+        except Exception:
+            if attempt < max_retries:
+                await asyncio.sleep(2 ** attempt)
+                continue
+            return None
+    return None
 
 
 def _parse_expiry(rdap: dict) -> Optional[datetime]:
@@ -182,19 +198,12 @@ async def check_domain(domain: str) -> dict:
 
 
 async def check_all(domains: List[str]) -> Dict[str, dict]:
-    """Run registrar checks for all domains concurrently.
+    """Run registrar checks for all domains, throttled.
 
     Note: Does NOT accept a Cloudflare session. RDAP calls use their
     own unauthenticated sessions to avoid leaking the CF API token.
     """
-    tasks = {
-        domain: asyncio.create_task(check_domain(domain))
-        for domain in domains
-    }
-    results = {}
-    for domain, task in tasks.items():
-        try:
-            results[domain] = await task
-        except Exception as e:
-            print(f"  [ERROR] Registrar check failed for {domain}: {e}")
-    return results
+    from lib.concurrency import throttled_gather
+    return await throttled_gather(
+        {d: check_domain(d) for d in domains}, label="Registrar check"
+    )

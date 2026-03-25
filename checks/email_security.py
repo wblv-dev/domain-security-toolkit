@@ -60,23 +60,16 @@ def _check_domain_sync(domain: str) -> dict:
 
 
 async def check_domain(domain: str) -> dict:
-    """Async wrapper — runs DNS lookups in a thread pool to avoid blocking."""
-    loop   = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _check_domain_sync, domain)
+    """Async wrapper — runs DNS lookups in a thread pool, throttled."""
+    from lib.concurrency import run_in_executor_throttled
+    result = await run_in_executor_throttled(_check_domain_sync, domain)
     print(f"  [EMAIL] {domain}: SPF={result['spf']['grade']}  DMARC={result['dmarc']['grade']}")
     return result
 
 
 async def check_all(domains: List[str]) -> Dict[str, dict]:
-    """Run email security checks for all domains concurrently."""
-    tasks = {
-        domain: asyncio.create_task(check_domain(domain))
-        for domain in domains
-    }
-    results = {}
-    for domain, task in tasks.items():
-        try:
-            results[domain] = await task
-        except Exception as e:
-            print(f"  [ERROR] Email check failed for {domain}: {e}")
-    return results
+    """Run email security checks for all domains, throttled."""
+    from lib.concurrency import throttled_gather
+    return await throttled_gather(
+        {d: check_domain(d) for d in domains}, label="Email check"
+    )

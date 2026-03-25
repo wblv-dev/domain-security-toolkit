@@ -2,7 +2,8 @@
 cf_client.py — Async Cloudflare API client.
 
 Uses aiohttp for concurrent requests. Provides retry/backoff on 429/5xx,
-paginated list helpers, and zone ID resolution.
+paginated list helpers, and zone ID resolution. All API calls are
+throttled via the shared semaphore to stay within rate limits.
 """
 
 import sys
@@ -12,6 +13,7 @@ from typing import Dict, List, Optional
 import aiohttp
 
 import config
+from lib.concurrency import sem
 
 
 def _get_headers() -> Dict[str, str]:
@@ -41,13 +43,17 @@ async def cf_get(
     params: Optional[Dict] = None,
     max_retries: int = 6,
 ) -> Dict:
-    """Async GET with exponential back-off on 429/5xx."""
+    """Async GET with exponential back-off on 429/5xx.
+
+    Throttled by the cf_api semaphore to prevent rate-limit hits
+    on large accounts (Cloudflare allows 1,200 req/5min).
+    """
     url     = f"{config.CF_API_BASE}{path}"
     backoff = 1.5
 
     for attempt in range(1, max_retries + 1):
         try:
-            async with session.get(url, params=params) as r:
+            async with sem.cf_api, session.get(url, params=params) as r:
                 if r.status in (429, 500, 502, 503, 504):
                     wait        = backoff ** attempt
                     retry_after = r.headers.get("Retry-After")

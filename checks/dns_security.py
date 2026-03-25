@@ -220,25 +220,25 @@ def grade_dangling(dangling: List[dict]) -> dict:
 # ── Async wrappers ───────────────────────────────────────────────────────────
 
 async def check_dnssec(domain: str) -> dict:
-    """Async wrapper for DNSSEC check."""
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _check_dnssec_sync, domain)
+    """Async wrapper for DNSSEC check, throttled."""
+    from lib.concurrency import run_in_executor_throttled
+    result = await run_in_executor_throttled(_check_dnssec_sync, domain)
     print(f"  [DNSSEC] {domain}: {result['grade']}")
     return result
 
 
 async def check_caa(domain: str) -> dict:
-    """Async wrapper for CAA check."""
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _check_caa_sync, domain)
+    """Async wrapper for CAA check, throttled."""
+    from lib.concurrency import run_in_executor_throttled
+    result = await run_in_executor_throttled(_check_caa_sync, domain)
     print(f"  [CAA] {domain}: {result['grade']}")
     return result
 
 
 async def check_dangling(domain: str, cname_records: List[dict]) -> dict:
-    """Async wrapper for dangling CNAME check."""
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _check_dangling_sync, domain, cname_records)
+    """Async wrapper for dangling CNAME check, throttled."""
+    from lib.concurrency import run_in_executor_throttled
+    result = await run_in_executor_throttled(_check_dangling_sync, domain, cname_records)
     count = len(result["dangling"])
     print(f"  [DANGLING] {domain}: {result['grade']}"
           + (f" ({count} dangling)" if count else ""))
@@ -267,17 +267,9 @@ async def check_all(
     domains: List[str],
     dns_records: Dict[str, List[dict]],
 ) -> Dict[str, dict]:
-    """Run DNS security checks for all domains concurrently."""
-    tasks = {
-        domain: asyncio.create_task(
-            check_domain(domain, dns_records.get(domain, []))
-        )
-        for domain in domains
-    }
-    results = {}
-    for domain, task in tasks.items():
-        try:
-            results[domain] = await task
-        except Exception as e:
-            print(f"  [ERROR] DNS security check failed for {domain}: {e}")
-    return results
+    """Run DNS security checks for all domains, throttled."""
+    from lib.concurrency import throttled_gather
+    return await throttled_gather(
+        {d: check_domain(d, dns_records.get(d, [])) for d in domains},
+        label="DNS security check",
+    )

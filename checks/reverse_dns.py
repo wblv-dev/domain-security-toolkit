@@ -109,23 +109,16 @@ def grade_reverse_dns(ptr_results: List[dict]) -> dict:
 
 
 async def check_domain(domain: str) -> dict:
-    """Async wrapper — runs PTR lookups in a thread pool."""
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, _check_mx_ptr_sync, domain)
+    """Async wrapper — runs PTR lookups in a thread pool, throttled."""
+    from lib.concurrency import run_in_executor_throttled
+    result = await run_in_executor_throttled(_check_mx_ptr_sync, domain)
     print(f"  [rDNS] {domain}: {result['grade']}")
     return result
 
 
 async def check_all(domains: List[str]) -> Dict[str, dict]:
-    """Run reverse DNS checks for all domains concurrently."""
-    tasks = {
-        domain: asyncio.create_task(check_domain(domain))
-        for domain in domains
-    }
-    results = {}
-    for domain, task in tasks.items():
-        try:
-            results[domain] = await task
-        except Exception as e:
-            print(f"  [ERROR] Reverse DNS check failed for {domain}: {e}")
-    return results
+    """Run reverse DNS checks for all domains, throttled."""
+    from lib.concurrency import throttled_gather
+    return await throttled_gather(
+        {d: check_domain(d) for d in domains}, label="Reverse DNS check"
+    )

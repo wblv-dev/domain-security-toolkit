@@ -31,18 +31,16 @@ async def fetch_all(
     session: aiohttp.ClientSession,
     zone_ids: Dict[str, str],
 ) -> Dict[str, List[dict]]:
-    """Fetch DNS records for all zones concurrently."""
-    tasks = {
-        domain: asyncio.create_task(fetch_domain(session, domain, zone_id))
-        for domain, zone_id in zone_ids.items()
-    }
-    results = {}
-    for domain, task in tasks.items():
-        try:
-            results[domain] = await task
-        except Exception as e:
-            print(f"  [ERROR] DNS fetch failed for {domain}: {e}")
-            results[domain] = []
+    """Fetch DNS records for all zones, throttled."""
+    from lib.concurrency import throttled_gather
+    results = await throttled_gather(
+        {d: fetch_domain(session, d, zid) for d, zid in zone_ids.items()},
+        label="DNS fetch",
+    )
+    # Ensure every domain has at least an empty list
+    for d in zone_ids:
+        if d not in results:
+            results[d] = []
     return results
 
 

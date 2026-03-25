@@ -243,15 +243,9 @@ async def check_all(
     session: aiohttp.ClientSession,
     zone_ids: Dict[str, str],
 ) -> Dict[str, dict]:
-    """Run zone security checks for all domains concurrently."""
-    tasks = {
-        domain: asyncio.create_task(check_zone(session, domain, zone_id))
-        for domain, zone_id in zone_ids.items()
-    }
-    results = {}
-    for domain, task in tasks.items():
-        try:
-            results[domain] = await task
-        except Exception as e:
-            print(f"  [ERROR] Security check failed for {domain}: {e}")
-    return results
+    """Run zone security checks for all domains, throttled."""
+    from lib.concurrency import throttled_gather
+    return await throttled_gather(
+        {d: check_zone(session, d, zid) for d, zid in zone_ids.items()},
+        label="Security check",
+    )

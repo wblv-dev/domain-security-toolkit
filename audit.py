@@ -98,6 +98,10 @@ def parse_args() -> argparse.Namespace:
         "--no-diff", action="store_true",
         help="skip comparison with previous run",
     )
+    p.add_argument(
+        "--concurrency", type=int, metavar="N", default=20,
+        help="max domains to process concurrently (default: 20)",
+    )
     return p.parse_args()
 
 
@@ -138,6 +142,15 @@ def _collect_all_grades(
 
 
 async def _run_audit(args: argparse.Namespace) -> int:
+    # Configure concurrency limits
+    from lib.concurrency import sem
+    sem.set_limits(domain=args.concurrency)
+    logger.debug(
+        "Concurrency: %d domains, %d CF API, %d DNS, %d RDAP, %d HTTP",
+        sem.limit_domain, sem.limit_cf_api, sem.limit_dns,
+        sem.limit_rdap, sem.limit_http,
+    )
+
     token = os.environ.get("CF_API_TOKEN", "") or config.CF_API_TOKEN
     if not token:
         logger.critical(
