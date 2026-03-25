@@ -406,18 +406,46 @@ def write_html(
     html = "\n".join([
         _html_head(),
         _html_header(domains),
+        '<div class="container">',
+        _html_search_bar(),
+        _html_tabs_nav(),
+        # Tab: Overview
+        '<div class="tab-panel active" id="tab-overview" role="tabpanel">',
         _html_summary_cards(
             domains, email_results, security_results, dns_results,
             registrar_results, dns_sec_results, blacklist_results, rdns_results,
         ),
-        _html_registrar_table(domains, registrar_results),
-        _html_dns_security_table(domains, dns_sec_results),
+        _html_overview_domain_cards(
+            domains, email_results, security_results, dns_results,
+            registrar_results, dns_sec_results, blacklist_results, rdns_results,
+        ),
+        '</div>',
+        # Tab: Zone Security
+        '<div class="tab-panel" id="tab-zone" role="tabpanel">',
         _html_security_table(domains, security_results),
+        '</div>',
+        # Tab: Email
+        '<div class="tab-panel" id="tab-email" role="tabpanel">',
         _html_email_table(domains, email_results),
+        '</div>',
+        # Tab: DNS Security
+        '<div class="tab-panel" id="tab-dnssec" role="tabpanel">',
+        _html_dns_security_table(domains, dns_sec_results),
+        '</div>',
+        # Tab: Infrastructure
+        '<div class="tab-panel" id="tab-infra" role="tabpanel">',
+        _html_registrar_table(domains, registrar_results),
         _html_blacklist_table(domains, blacklist_results),
         _html_rdns_table(domains, rdns_results),
+        '</div>',
+        # Tab: DNS Records
+        '<div class="tab-panel" id="tab-dns" role="tabpanel">',
         _html_dns_tables(domains, dns_results),
+        '</div>',
+        '</div>',  # close .container
         _html_footer(),
+        _html_script(),
+        '</body></html>',
     ])
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -440,21 +468,72 @@ def _html_head() -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cloudflare DNS Audit Report</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
+/* ── Reset & Base ──────────────────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f0f2f5;--bg-card:#fff;--text:#1a1a2e;--text-muted:#64748b;
+  --border:#e2e8f0;--header-bg:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);
+  --header-text:#fff;--th-bg:#0f3460;--th-text:#fff;--hover-row:#f8fafc;
+  --code-bg:#f1f5f9;--shadow:0 1px 4px rgba(0,0,0,.1);
+  --accent:#0f3460;--accent-light:#3b82f6;
+  --transition-speed:.25s;
+}
+html[data-theme="dark"]{
+  --bg:#0f172a;--bg-card:#1e293b;--text:#e2e8f0;--text-muted:#94a3b8;
+  --border:#334155;--header-bg:linear-gradient(135deg,#0f172a 0%,#1e293b 60%,#1e3a5f 100%);
+  --header-text:#e2e8f0;--th-bg:#1e3a5f;--th-text:#e2e8f0;--hover-row:#334155;
+  --code-bg:#334155;--shadow:0 1px 4px rgba(0,0,0,.4);
+  --accent:#60a5fa;--accent-light:#93c5fd;
+}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  line-height:1.6;color:#1a1a2e;background:#f0f2f5}
-.header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%);
-  color:#fff;padding:40px 20px}
+  line-height:1.6;color:var(--text);background:var(--bg);
+  transition:background var(--transition-speed),color var(--transition-speed)}
+
+/* ── Header ────────────────────────────────────────────────── */
+.header{background:var(--header-bg);color:var(--header-text);padding:32px 20px}
 .header-inner{max-width:1200px;margin:0 auto;display:flex;
-  justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px}
-.header h1{font-size:1.9em;font-weight:600;margin-bottom:4px}
-.header .meta{opacity:.8;font-size:.95em}
-.container{max-width:1200px;margin:0 auto;padding:32px 20px}
-h2{font-size:1.4em;font-weight:600;color:#0f3460;margin:40px 0 16px;
-  padding-bottom:8px;border-bottom:2px solid #e2e8f0}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:24px 0}
-.card{padding:24px;border-radius:10px;color:#fff}
-.card h3{font-size:.8em;text-transform:uppercase;letter-spacing:.5px;opacity:.9;margin-bottom:8px}
+  justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+.header h1{font-size:1.8em;font-weight:700}
+.header .meta{opacity:.85;font-size:.9em}
+.header-actions{display:flex;gap:10px;align-items:center}
+.theme-toggle{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
+  color:var(--header-text);padding:8px 14px;border-radius:8px;cursor:pointer;
+  font-size:.85em;transition:background .2s}
+.theme-toggle:hover{background:rgba(255,255,255,.25)}
+
+/* ── Container ─────────────────────────────────────────────── */
+.container{max-width:1200px;margin:0 auto;padding:24px 20px}
+
+/* ── Search bar ────────────────────────────────────────────── */
+.search-bar{margin-bottom:20px}
+.search-bar input{width:100%;padding:12px 16px 12px 42px;border:2px solid var(--border);
+  border-radius:10px;font-size:.95em;background:var(--bg-card);color:var(--text);
+  transition:border-color .2s,box-shadow .2s;outline:none}
+.search-bar input:focus{border-color:var(--accent-light);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.search-bar{position:relative}
+.search-bar::before{content:"\\1F50D";position:absolute;left:14px;top:50%;
+  transform:translateY(-50%);font-size:1em;opacity:.5;pointer-events:none}
+
+/* ── Tabs ──────────────────────────────────────────────────── */
+.tabs-nav{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:24px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab-btn{padding:10px 20px;border:none;background:transparent;color:var(--text-muted);
+  font-size:.9em;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;
+  white-space:nowrap;transition:color .2s,border-color .2s,background .2s;
+  border-radius:8px 8px 0 0}
+.tab-btn:hover{color:var(--text);background:rgba(0,0,0,.03)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+html[data-theme="dark"] .tab-btn:hover{background:rgba(255,255,255,.05)}
+.tab-panel{display:none;animation:fadeIn .3s ease}
+.tab-panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Summary cards ─────────────────────────────────────────── */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:24px 0}
+.card{padding:24px;border-radius:12px;color:#fff;position:relative;overflow:hidden;
+  transition:transform .2s,box-shadow .2s}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.card h3{font-size:.75em;text-transform:uppercase;letter-spacing:.8px;opacity:.9;margin-bottom:8px}
 .card .val{font-size:2.2em;font-weight:700}
 .card .sub{font-size:.85em;opacity:.85;margin-top:4px}
 .c-navy{background:linear-gradient(135deg,#1a1a2e,#0f3460)}
@@ -464,23 +543,84 @@ h2{font-size:1.4em;font-weight:600;color:#0f3460;margin:40px 0 16px;
 .c-blue{background:linear-gradient(135deg,#1e3a8a,#3b82f6)}
 .c-purple{background:linear-gradient(135deg,#4c1d95,#7c3aed)}
 .c-teal{background:linear-gradient(135deg,#134e4a,#0d9488)}
+
+/* ── Progress ring ─────────────────────────────────────────── */
+.progress-ring{display:inline-flex;align-items:center;gap:10px}
+.progress-ring svg{transform:rotate(-90deg)}
+.progress-ring circle{transition:stroke-dashoffset .6s ease}
+.progress-ring .label{font-size:.85em;color:var(--text-muted)}
+
+/* ── Domain cards (collapsible) ────────────────────────────── */
+.domain-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+  margin-bottom:16px;overflow:hidden;transition:box-shadow .2s;box-shadow:var(--shadow)}
+.domain-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.domain-card-header{padding:16px 20px;cursor:pointer;display:flex;
+  justify-content:space-between;align-items:center;user-select:none;
+  transition:background .2s}
+.domain-card-header:hover{background:var(--hover-row)}
+.domain-card-header h3{font-size:1em;font-weight:600;display:flex;align-items:center;gap:10px}
+.domain-card-header .badges{display:flex;gap:6px;flex-wrap:wrap}
+.domain-card-chevron{transition:transform .3s ease;font-size:.8em;color:var(--text-muted)}
+.domain-card.open .domain-card-chevron{transform:rotate(180deg)}
+.domain-card-body{max-height:0;overflow:hidden;transition:max-height .4s ease,padding .3s ease;
+  padding:0 20px}
+.domain-card.open .domain-card-body{max-height:3000px;padding:0 20px 20px}
+
+/* ── Tables ────────────────────────────────────────────────── */
 table{width:100%;border-collapse:collapse;margin:16px 0;border-radius:8px;
-  overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.1)}
-th{background:#0f3460;color:#fff;padding:12px 16px;text-align:left;
-  font-size:.85em;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
-td{padding:12px 16px;border-bottom:1px solid #e2e8f0;font-size:.9em;vertical-align:top}
+  overflow:hidden;box-shadow:var(--shadow);background:var(--bg-card)}
+th{background:var(--th-bg);color:var(--th-text);padding:12px 16px;text-align:left;
+  font-size:.8em;font-weight:600;text-transform:uppercase;letter-spacing:.3px;
+  cursor:pointer;user-select:none;white-space:nowrap;transition:background .2s}
+th:hover{background:#1e3a5f}
+html[data-theme="dark"] th:hover{background:#2d4a6f}
+th .sort-arrow{display:inline-block;margin-left:4px;opacity:.5;font-size:.7em}
+th.sort-asc .sort-arrow::after{content:"\\25B2"}
+th.sort-desc .sort-arrow::after{content:"\\25BC"}
+td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:.88em;vertical-align:top;
+  transition:background .15s}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:#f8fafc}
+tr:hover td{background:var(--hover-row)}
+
+/* ── Badges ────────────────────────────────────────────────── */
 .badge{display:inline-block;padding:3px 10px;border-radius:12px;
-  font-size:.8em;font-weight:600;white-space:nowrap}
+  font-size:.8em;font-weight:600;white-space:nowrap;transition:transform .15s}
+.badge:hover{transform:scale(1.05)}
 .badge-success{background:#d1fae5;color:#065f46}
 .badge-warning{background:#fef3c7;color:#92400e}
 .badge-danger{background:#fee2e2;color:#991b1b}
 .badge-info{background:#dbeafe;color:#1e40af}
-.domain-section{margin-bottom:48px}
-code{font-family:monospace;background:#f1f5f9;padding:1px 5px;border-radius:3px;font-size:.88em}
-.footer{text-align:center;padding:32px;color:#64748b;font-size:.85em;border-top:1px solid #e2e8f0;margin-top:40px}
-@media(max-width:640px){.header h1{font-size:1.4em}.cards{grid-template-columns:1fr}}
+html[data-theme="dark"] .badge-success{background:#064e3b;color:#6ee7b7}
+html[data-theme="dark"] .badge-warning{background:#78350f;color:#fcd34d}
+html[data-theme="dark"] .badge-danger{background:#7f1d1d;color:#fca5a5}
+html[data-theme="dark"] .badge-info{background:#1e3a8a;color:#93c5fd}
+
+/* ── Misc ──────────────────────────────────────────────────── */
+code{font-family:'SF Mono',Monaco,Consolas,monospace;background:var(--code-bg);
+  padding:1px 6px;border-radius:4px;font-size:.85em;transition:background .2s}
+.section-title{font-size:1.3em;font-weight:600;color:var(--accent);margin:32px 0 16px;
+  padding-bottom:8px;border-bottom:2px solid var(--border)}
+.empty-state{text-align:center;padding:40px;color:var(--text-muted);font-size:.95em}
+.footer{text-align:center;padding:32px;color:var(--text-muted);font-size:.85em;
+  border-top:1px solid var(--border);margin-top:40px}
+.footer a{color:var(--accent-light);text-decoration:none}
+.footer a:hover{text-decoration:underline}
+.domain-section{margin-bottom:32px}
+
+/* ── Responsive ────────────────────────────────────────────── */
+@media(max-width:768px){
+  .header h1{font-size:1.3em}
+  .header-inner{flex-direction:column;align-items:flex-start}
+  .cards{grid-template-columns:1fr 1fr}
+  .tabs-nav{gap:2px}
+  .tab-btn{padding:8px 12px;font-size:.8em}
+  td,th{padding:8px 10px;font-size:.8em}
+  .domain-card-header{padding:12px 14px}
+}
+@media(max-width:480px){
+  .cards{grid-template-columns:1fr}
+  .container{padding:16px 12px}
+}
 </style>
 </head>
 <body>"""
@@ -495,10 +635,69 @@ def _html_header(domains: List[str]) -> str:
       <h1>Cloudflare DNS Audit Report</h1>
       <div class="meta">Domains: {domain_list}</div>
     </div>
-    <div class="meta" style="text-align:right">Generated: {_ts()}</div>
+    <div class="header-actions">
+      <span class="meta">Generated: {_ts()}</span>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode"
+        title="Toggle dark/light mode">&#9790; Dark mode</button>
+    </div>
   </div>
-</div>
-<div class="container">"""
+</div>"""
+
+
+def _html_search_bar() -> str:
+    return """
+<div class="search-bar">
+  <input type="text" id="domain-search" placeholder="Filter domains..."
+    aria-label="Filter domains by name" autocomplete="off">
+</div>"""
+
+
+def _html_tabs_nav() -> str:
+    tabs = [
+        ("tab-overview", "Overview"),
+        ("tab-zone", "Zone Security"),
+        ("tab-email", "Email"),
+        ("tab-dnssec", "DNS Security"),
+        ("tab-infra", "Infrastructure"),
+        ("tab-dns", "DNS Records"),
+    ]
+    buttons = "\n".join(
+        f'  <button class="tab-btn{" active" if i == 0 else ""}" '
+        f'data-tab="{tid}" role="tab" aria-selected="{"true" if i == 0 else "false"}">'
+        f'{label}</button>'
+        for i, (tid, label) in enumerate(tabs)
+    )
+    return f'<nav class="tabs-nav" role="tablist">\n{buttons}\n</nav>'
+
+
+def _progress_ring(passed: int, total: int, size: int = 48) -> str:
+    """SVG progress ring indicator."""
+    if total == 0:
+        pct = 0
+    else:
+        pct = passed / total
+    r = (size - 6) // 2
+    circ = 2 * 3.14159 * r
+    offset = circ * (1 - pct)
+    if pct >= 0.9:
+        color = "#059669"
+    elif pct >= 0.6:
+        color = "#d97706"
+    else:
+        color = "#dc2626"
+    return (
+        f'<span class="progress-ring">'
+        f'<svg width="{size}" height="{size}" aria-hidden="true">'
+        f'<circle cx="{size // 2}" cy="{size // 2}" r="{r}" fill="none" '
+        f'stroke="var(--border)" stroke-width="5"/>'
+        f'<circle cx="{size // 2}" cy="{size // 2}" r="{r}" fill="none" '
+        f'stroke="{color}" stroke-width="5" '
+        f'stroke-dasharray="{circ:.1f}" stroke-dashoffset="{offset:.1f}" '
+        f'stroke-linecap="round"/>'
+        f'</svg>'
+        f'<span class="label"><strong>{passed}/{total}</strong></span>'
+        f'</span>'
+    )
 
 
 def _html_summary_cards(
@@ -523,7 +722,6 @@ def _html_summary_cards(
             sec_pass += p
             sec_total += t
 
-    # Collect all new check grades
     all_new_grades = []
     for d in domains:
         reg = registrar_results.get(d, {})
@@ -541,34 +739,153 @@ def _html_summary_cards(
     new_pass = sum(1 for g in all_new_grades if g == "PASS")
 
     return f"""
-<h2>Executive summary</h2>
+<h2 class="section-title">Executive Summary</h2>
 <div class="cards">
   <div class="card c-navy">
-    <h3>Domains audited</h3>
+    <h3>Domains Audited</h3>
     <div class="val">{len(domains)}</div>
     <div class="sub">{total_dns} total DNS records</div>
   </div>
   <div class="card {'c-green' if email_fail == 0 else 'c-red'}">
-    <h3>Email security</h3>
+    <h3>Email Security</h3>
     <div class="val">{email_pass} pass</div>
     <div class="sub">{email_fail} fail</div>
   </div>
   <div class="card {'c-green' if sec_total and sec_pass == sec_total else 'c-orange'}">
-    <h3>Zone security</h3>
+    <h3>Zone Security</h3>
     <div class="val">{sec_pass}/{sec_total}</div>
     <div class="sub">checks passed</div>
   </div>
   <div class="card {'c-green' if new_fail == 0 else 'c-red'}">
     <h3>Infrastructure</h3>
     <div class="val">{new_pass} pass</div>
-    <div class="sub">{new_warn} warn &nbsp;·&nbsp; {new_fail} fail</div>
+    <div class="sub">{new_warn} warn &middot; {new_fail} fail</div>
   </div>
 </div>"""
 
 
+def _html_overview_domain_cards(
+    domains, email_results, security_results, dns_results,
+    registrar_results, dns_sec_results, blacklist_results, rdns_results,
+) -> str:
+    """Collapsible per-domain overview cards with progress rings."""
+    cards = []
+    for domain in domains:
+        # Collect grades for badge summary
+        badges_html = ""
+        sec = security_results.get(domain)
+        if sec:
+            p, t = sec["score"]
+            ring = _progress_ring(p, t, 40)
+            sec_grade = _worst([r["grade"] for r in sec["results"]])
+            badges_html += f' {_badge(sec_grade, f"Zone {p}/{t}")}'
+        email = email_results.get(domain, {})
+        spf_g = email.get("spf", {}).get("grade", "INFO")
+        dmarc_g = email.get("dmarc", {}).get("grade", "INFO")
+        email_grade = _worst([spf_g, dmarc_g])
+        badges_html += f' {_badge(email_grade, "Email")}'
+
+        reg = registrar_results.get(domain, {})
+        reg_grade = _worst([
+            reg.get("expiry", {}).get("grade", "INFO"),
+            reg.get("lock", {}).get("grade", "INFO"),
+        ])
+        badges_html += f' {_badge(reg_grade, "Registrar")}'
+
+        ds = dns_sec_results.get(domain, {})
+        dnssec_g = ds.get("dnssec", {}).get("grade", "INFO")
+        badges_html += f' {_badge(dnssec_g, "DNSSEC")}'
+
+        bl_g = blacklist_results.get(domain, {}).get("grade", "INFO")
+        badges_html += f' {_badge(bl_g, "Blacklist")}'
+
+        rdns_g = rdns_results.get(domain, {}).get("grade", "INFO")
+        badges_html += f' {_badge(rdns_g, "rDNS")}'
+
+        dns_count = dns_results.get(domain, {}).get("total", 0)
+
+        # Build body details
+        body_parts = []
+
+        # Zone security details
+        if sec:
+            p, t = sec["score"]
+            body_parts.append(f'<div style="margin-bottom:16px">'
+                              f'<strong>Zone Security</strong> {_progress_ring(p, t)}</div>')
+            sec_rows = ""
+            for r in sec["results"]:
+                sec_rows += (
+                    f'<tr><td>{r["label"]}</td>'
+                    f'<td><code>{r.get("recommended", "—")}</code></td>'
+                    f'<td><code>{r.get("actual", "—")}</code></td>'
+                    f'<td>{_badge(r["grade"])}</td></tr>'
+                )
+            body_parts.append(
+                f'<table><thead><tr><th>Check</th><th>Recommended</th>'
+                f'<th>Actual</th><th>Grade</th></tr></thead>'
+                f'<tbody>{sec_rows}</tbody></table>'
+            )
+
+        # Email details
+        email_data = email_results.get(domain)
+        if email_data:
+            spf = email_data["spf"]
+            dmarc = email_data["dmarc"]
+            mx_text = "None"
+            if email_data["mx"]:
+                if not email_data["has_mail"]:
+                    mx_text = "Null MX"
+                else:
+                    mx_text = ", ".join(
+                        f'{m["priority"]} {m["host"]}' for m in email_data["mx"][:3]
+                    )
+            dkim_count = len(email_data["dkim"])
+            body_parts.append(
+                f'<div style="margin-top:16px"><strong>Email Security</strong></div>'
+                f'<table><thead><tr><th>MX</th><th>SPF</th><th>DMARC</th><th>DKIM</th></tr></thead>'
+                f'<tbody><tr>'
+                f'<td><small>{mx_text}</small></td>'
+                f'<td>{_badge(spf["grade"])} <small>{spf["reason"]}</small></td>'
+                f'<td>{_badge(dmarc["grade"])} <small>{dmarc["reason"]}</small></td>'
+                f'<td>{"&#10003; " + str(dkim_count) + " selector(s)" if dkim_count else "—"}</td>'
+                f'</tr></tbody></table>'
+            )
+
+        # Registrar details
+        if reg:
+            exp = reg.get("expiry", {})
+            lock = reg.get("lock", {})
+            body_parts.append(
+                f'<div style="margin-top:16px"><strong>Registrar</strong></div>'
+                f'<table><thead><tr><th>Registrar</th><th>Expiry</th><th>Transfer Lock</th></tr></thead>'
+                f'<tbody><tr>'
+                f'<td>{reg.get("registrar", "—")}</td>'
+                f'<td>{_badge(exp.get("grade", "INFO"))} <small>{exp.get("reason", "")}</small></td>'
+                f'<td>{_badge(lock.get("grade", "INFO"))} '
+                f'<small>{"Locked" if lock.get("locked") else "Unlocked"}</small></td>'
+                f'</tr></tbody></table>'
+            )
+
+        body_html = "\n".join(body_parts)
+
+        cards.append(
+            f'<div class="domain-card" data-domain="{domain}">'
+            f'<div class="domain-card-header" onclick="toggleCard(this)">'
+            f'<h3><code>{domain}</code> <small style="color:var(--text-muted)">'
+            f'({dns_count} records)</small></h3>'
+            f'<div style="display:flex;align-items:center;gap:8px">'
+            f'<span class="badges">{badges_html}</span>'
+            f'<span class="domain-card-chevron" aria-hidden="true">&#9660;</span>'
+            f'</div></div>'
+            f'<div class="domain-card-body">{body_html}</div></div>'
+        )
+
+    return "\n".join(cards)
+
+
 def _html_registrar_table(domains, registrar_results) -> str:
     if not registrar_results:
-        return ""
+        return '<div class="empty-state">No registrar data available.</div>'
 
     rows = ""
     for domain in domains:
@@ -581,7 +898,7 @@ def _html_registrar_table(domains, registrar_results) -> str:
         ns = ", ".join(result.get("nameservers", [])[:4]) or "—"
 
         rows += (
-            f"<tr><td><code>{domain}</code></td>"
+            f'<tr data-domain="{domain}"><td><code>{domain}</code></td>'
             f"<td>{result.get('registrar', '—')}</td>"
             f"<td>{_badge(exp.get('grade', 'INFO'))} <small>{exp.get('reason', '')}</small></td>"
             f"<td>{_badge(lock.get('grade', 'INFO'))} <small>{'Locked' if lock.get('locked') else 'Unlocked'}</small></td>"
@@ -589,11 +906,14 @@ def _html_registrar_table(domains, registrar_results) -> str:
         )
 
     return f"""
-<h2>Registrar &amp; domain status</h2>
-<table>
+<h2 class="section-title">Registrar &amp; Domain Status</h2>
+<table class="sortable">
   <thead><tr>
-    <th>Domain</th><th>Registrar</th><th>Expiry</th>
-    <th>Transfer lock</th><th>Nameservers</th>
+    <th>Domain <span class="sort-arrow"></span></th>
+    <th>Registrar <span class="sort-arrow"></span></th>
+    <th>Expiry <span class="sort-arrow"></span></th>
+    <th>Transfer Lock <span class="sort-arrow"></span></th>
+    <th>Nameservers <span class="sort-arrow"></span></th>
   </tr></thead>
   <tbody>{rows}</tbody>
 </table>"""
@@ -601,9 +921,9 @@ def _html_registrar_table(domains, registrar_results) -> str:
 
 def _html_dns_security_table(domains, dns_sec_results) -> str:
     if not dns_sec_results:
-        return ""
+        return '<div class="empty-state">No DNS security data available.</div>'
 
-    rows = ""
+    cards = []
     for domain in domains:
         result = dns_sec_results.get(domain)
         if not result:
@@ -612,61 +932,128 @@ def _html_dns_security_table(domains, dns_sec_results) -> str:
         dnssec = result.get("dnssec", {})
         caa = result.get("caa", {})
         dangling = result.get("dangling", {})
-        dang_count = len(dangling.get("dangling", []))
+        dang_list = dangling.get("dangling", [])
 
-        rows += (
-            f"<tr><td><code>{domain}</code></td>"
-            f"<td>{_badge(dnssec.get('grade', 'INFO'))} <small>{dnssec.get('reason', '')}</small></td>"
-            f"<td>{_badge(caa.get('grade', 'INFO'))} <small>{caa.get('reason', '')}</small></td>"
-            f"<td>{_badge(dangling.get('grade', 'INFO'))} "
-            f"<small>{dang_count} dangling</small></td></tr>\n"
+        detail_rows = (
+            f'<tr><td>DNSSEC</td><td>{_badge(dnssec.get("grade", "INFO"))}</td>'
+            f'<td>{dnssec.get("reason", "")}</td></tr>'
+            f'<tr><td>CAA</td><td>{_badge(caa.get("grade", "INFO"))}</td>'
+            f'<td>{caa.get("reason", "")}</td></tr>'
+            f'<tr><td>Dangling CNAMEs</td><td>{_badge(dangling.get("grade", "INFO"))}</td>'
+            f'<td>{len(dang_list)} dangling</td></tr>'
         )
 
-    return f"""
-<h2>DNS security</h2>
-<table>
-  <thead><tr>
-    <th>Domain</th><th>DNSSEC</th><th>CAA</th><th>Dangling CNAMEs</th>
-  </tr></thead>
-  <tbody>{rows}</tbody>
-</table>"""
+        caa_records = caa.get("records", [])
+        caa_html = ""
+        if caa_records:
+            caa_rows = "".join(
+                f'<tr><td>{r.get("flags", "")}</td><td><code>{r.get("tag", "")}</code></td>'
+                f'<td><code>{r.get("value", "")}</code></td></tr>'
+                for r in caa_records
+            )
+            caa_html = (
+                f'<div style="margin-top:12px"><strong>CAA Records</strong></div>'
+                f'<table><thead><tr><th>Flags</th><th>Tag</th><th>Value</th></tr></thead>'
+                f'<tbody>{caa_rows}</tbody></table>'
+            )
+
+        dangling_html = ""
+        if dang_list:
+            dang_rows = "".join(
+                f'<tr><td><code>{d["name"]}</code></td><td><code>{d["target"]}</code></td></tr>'
+                for d in dang_list
+            )
+            dangling_html = (
+                f'<div style="margin-top:12px"><strong>Dangling CNAMEs</strong></div>'
+                f'<table><thead><tr><th>Record</th><th>Target</th></tr></thead>'
+                f'<tbody>{dang_rows}</tbody></table>'
+            )
+
+        overall = _worst([
+            dnssec.get("grade", "INFO"),
+            caa.get("grade", "INFO"),
+            dangling.get("grade", "INFO"),
+        ])
+
+        cards.append(
+            f'<div class="domain-card" data-domain="{domain}">'
+            f'<div class="domain-card-header" onclick="toggleCard(this)">'
+            f'<h3><code>{domain}</code></h3>'
+            f'<div style="display:flex;align-items:center;gap:8px">'
+            f'{_badge(overall)}'
+            f'<span class="domain-card-chevron" aria-hidden="true">&#9660;</span>'
+            f'</div></div>'
+            f'<div class="domain-card-body">'
+            f'<table><thead><tr><th>Check</th><th>Grade</th><th>Details</th></tr></thead>'
+            f'<tbody>{detail_rows}</tbody></table>'
+            f'{caa_html}{dangling_html}'
+            f'</div></div>'
+        )
+
+    return f'<h2 class="section-title">DNS Security</h2>\n' + "\n".join(cards)
 
 
 def _html_security_table(domains, security_results) -> str:
     if not security_results:
-        return ""
+        return '<div class="empty-state">No zone security data available.</div>'
 
-    rows = ""
+    cards = []
     for domain in domains:
         sec = security_results.get(domain)
         if not sec:
             continue
+        passed, total = sec["score"]
+        overall = _worst([r["grade"] for r in sec["results"]])
+
+        rows = ""
         for r in sec["results"]:
             rows += (
-                f"<tr><td><code>{domain}</code></td>"
-                f"<td>{r['label']}</td>"
-                f"<td><code>{r.get('recommended','—')}</code></td>"
-                f"<td><code>{r.get('actual','—')}</code></td>"
-                f"<td>{_badge(r['grade'])}</td>"
-                f"<td>{r.get('note','')}</td></tr>\n"
+                f'<tr><td>{r["label"]}</td>'
+                f'<td><code>{r.get("recommended", "—")}</code></td>'
+                f'<td><code>{r.get("actual", "—")}</code></td>'
+                f'<td>{_badge(r["grade"])}</td>'
+                f'<td>{r.get("note", "")}</td></tr>\n'
             )
 
-    return f"""
-<h2>Zone security settings</h2>
-<table>
-  <thead><tr>
-    <th>Domain</th><th>Check</th><th>Recommended</th>
-    <th>Actual</th><th>Grade</th><th>Notes</th>
-  </tr></thead>
-  <tbody>{rows}</tbody>
-</table>"""
+        findings = [r for r in sec["results"] if r["grade"] in ("FAIL", "WARN")]
+        findings_html = ""
+        if findings:
+            items = "".join(
+                f'<li><strong>{r["label"]}</strong> ({_badge(r["grade"])}): '
+                f'{r.get("explanation", "")}</li>'
+                for r in findings if r.get("explanation")
+            )
+            if items:
+                findings_html = f'<div style="margin-top:12px"><strong>Findings</strong><ul style="margin:8px 0 0 20px">{items}</ul></div>'
+
+        cards.append(
+            f'<div class="domain-card" data-domain="{domain}">'
+            f'<div class="domain-card-header" onclick="toggleCard(this)">'
+            f'<h3><code>{domain}</code></h3>'
+            f'<div style="display:flex;align-items:center;gap:8px">'
+            f'{_progress_ring(passed, total, 36)} {_badge(overall)}'
+            f'<span class="domain-card-chevron" aria-hidden="true">&#9660;</span>'
+            f'</div></div>'
+            f'<div class="domain-card-body">'
+            f'<table class="sortable"><thead><tr>'
+            f'<th>Check <span class="sort-arrow"></span></th>'
+            f'<th>Recommended <span class="sort-arrow"></span></th>'
+            f'<th>Actual <span class="sort-arrow"></span></th>'
+            f'<th>Grade <span class="sort-arrow"></span></th>'
+            f'<th>Notes <span class="sort-arrow"></span></th>'
+            f'</tr></thead><tbody>{rows}</tbody></table>'
+            f'{findings_html}'
+            f'</div></div>'
+        )
+
+    return f'<h2 class="section-title">Zone Security Settings</h2>\n' + "\n".join(cards)
 
 
 def _html_email_table(domains, email_results) -> str:
     if not email_results:
-        return ""
+        return '<div class="empty-state">No email security data available.</div>'
 
-    rows = ""
+    cards = []
     for domain in domains:
         result = email_results.get(domain)
         if not result:
@@ -674,28 +1061,74 @@ def _html_email_table(domains, email_results) -> str:
 
         mx_text = "None" if not result["mx"] else (
             "Null MX" if not result["has_mail"]
-            else ", ".join(f"{m['priority']} {m['host']}" for m in result["mx"][:3])
+            else ", ".join(f'{m["priority"]} {m["host"]}' for m in result["mx"][:3])
         )
-        spf   = result["spf"]
+        spf = result["spf"]
         dmarc = result["dmarc"]
         dkim_count = len(result["dkim"])
+        email_grade = _worst([spf["grade"], dmarc["grade"]])
 
-        rows += (
-            f"<tr><td><code>{domain}</code></td>"
-            f"<td><small>{mx_text}</small></td>"
-            f"<td>{_badge(spf['grade'])} <small>{spf['reason']}</small></td>"
-            f"<td>{_badge(dmarc['grade'])} <small>{dmarc['reason']}</small></td>"
-            f"<td>{'✅ ' + str(dkim_count) + ' selector(s)' if dkim_count else '—'}</td></tr>\n"
+        # SPF detail
+        spf_detail = ""
+        if spf.get("record"):
+            spf_detail = f'<div style="margin-top:8px"><code style="word-break:break-all;display:block;padding:8px">{spf["record"]}</code></div>'
+
+        # DMARC detail
+        dmarc_detail = ""
+        if dmarc.get("record"):
+            dmarc_detail = f'<div style="margin-top:8px"><code style="word-break:break-all;display:block;padding:8px">{dmarc["record"]}</code></div>'
+        if dmarc.get("rua"):
+            dmarc_detail += f'<div style="margin-top:4px"><small>Reporting (rua): <code>{dmarc["rua"]}</code></small></div>'
+
+        # DKIM detail
+        dkim_html = ""
+        if result["dkim"]:
+            dkim_rows = "".join(
+                f'<tr><td><code>{dk["selector"]}</code></td>'
+                f'<td><code>{_truncate(dk["record"], 60)}</code></td></tr>'
+                for dk in result["dkim"]
+            )
+            dkim_html = (
+                f'<div style="margin-top:12px"><strong>DKIM Selectors</strong></div>'
+                f'<table><thead><tr><th>Selector</th><th>Record</th></tr></thead>'
+                f'<tbody>{dkim_rows}</tbody></table>'
+            )
+
+        # MX table
+        mx_html = ""
+        if result["has_mail"] and result["mx"]:
+            mx_rows = "".join(
+                f'<tr><td>{m["priority"]}</td><td><code>{m["host"]}</code></td></tr>'
+                for m in result["mx"]
+            )
+            mx_html = (
+                f'<div style="margin-top:12px"><strong>MX Records</strong></div>'
+                f'<table><thead><tr><th>Priority</th><th>Host</th></tr></thead>'
+                f'<tbody>{mx_rows}</tbody></table>'
+            )
+
+        cards.append(
+            f'<div class="domain-card" data-domain="{domain}">'
+            f'<div class="domain-card-header" onclick="toggleCard(this)">'
+            f'<h3><code>{domain}</code></h3>'
+            f'<div style="display:flex;align-items:center;gap:8px">'
+            f'{_badge(email_grade)} '
+            f'<small style="color:var(--text-muted)">{mx_text}</small>'
+            f'<span class="domain-card-chevron" aria-hidden="true">&#9660;</span>'
+            f'</div></div>'
+            f'<div class="domain-card-body">'
+            f'<table><thead><tr><th>Check</th><th>Grade</th><th>Details</th></tr></thead>'
+            f'<tbody>'
+            f'<tr><td>SPF</td><td>{_badge(spf["grade"])}</td><td>{spf["reason"]}{spf_detail}</td></tr>'
+            f'<tr><td>DMARC</td><td>{_badge(dmarc["grade"])}</td><td>{dmarc["reason"]}{dmarc_detail}</td></tr>'
+            f'<tr><td>DKIM</td><td>{_badge("PASS" if dkim_count else "INFO")}</td>'
+            f'<td>{dkim_count} selector(s) found</td></tr>'
+            f'</tbody></table>'
+            f'{mx_html}{dkim_html}'
+            f'</div></div>'
         )
 
-    return f"""
-<h2>Email security (live DNS)</h2>
-<table>
-  <thead><tr>
-    <th>Domain</th><th>MX</th><th>SPF</th><th>DMARC</th><th>DKIM</th>
-  </tr></thead>
-  <tbody>{rows}</tbody>
-</table>"""
+    return f'<h2 class="section-title">Email Security</h2>\n' + "\n".join(cards)
 
 
 def _html_blacklist_table(domains, blacklist_results) -> str:
@@ -712,22 +1145,24 @@ def _html_blacklist_table(domains, blacklist_results) -> str:
         detail = ""
         if listings:
             detail = "<br>".join(
-                f"<small>{l.get('ip','')} on {l.get('blacklist','')}</small>"
+                f"<small>{l.get('ip', '')} on {l.get('blacklist', '')}</small>"
                 for l in listings[:5]
             )
 
         rows += (
-            f"<tr><td><code>{domain}</code></td>"
+            f'<tr data-domain="{domain}"><td><code>{domain}</code></td>'
             f"<td>{_badge(result.get('grade', 'INFO'))} "
             f"<small>{result.get('reason', '')}</small></td>"
             f"<td>{detail or '—'}</td></tr>\n"
         )
 
     return f"""
-<h2>Blacklist (DNSBL)</h2>
-<table>
+<h2 class="section-title">Blacklist (DNSBL)</h2>
+<table class="sortable">
   <thead><tr>
-    <th>Domain</th><th>Status</th><th>Listings</th>
+    <th>Domain <span class="sort-arrow"></span></th>
+    <th>Status <span class="sort-arrow"></span></th>
+    <th>Listings <span class="sort-arrow"></span></th>
   </tr></thead>
   <tbody>{rows}</tbody>
 </table>"""
@@ -747,23 +1182,25 @@ def _html_rdns_table(domains, rdns_results) -> str:
         detail = ""
         if ptr_results:
             detail = "<br>".join(
-                f"<small>{r.get('ip','')} → {r.get('ptr','—')} "
-                f"{'✅' if r.get('fcrdns') else '❌'}</small>"
+                f"<small>{r.get('ip', '')} &rarr; {r.get('ptr', '—')} "
+                f"{'&#10003;' if r.get('fcrdns') else '&#10007;'}</small>"
                 for r in ptr_results[:5]
             )
 
         rows += (
-            f"<tr><td><code>{domain}</code></td>"
+            f'<tr data-domain="{domain}"><td><code>{domain}</code></td>'
             f"<td>{_badge(result.get('grade', 'INFO'))} "
             f"<small>{result.get('reason', '')}</small></td>"
             f"<td>{detail or '—'}</td></tr>\n"
         )
 
     return f"""
-<h2>Reverse DNS (PTR)</h2>
-<table>
+<h2 class="section-title">Reverse DNS (PTR)</h2>
+<table class="sortable">
   <thead><tr>
-    <th>Domain</th><th>Status</th><th>Details</th>
+    <th>Domain <span class="sort-arrow"></span></th>
+    <th>Status <span class="sort-arrow"></span></th>
+    <th>Details <span class="sort-arrow"></span></th>
   </tr></thead>
   <tbody>{rows}</tbody>
 </table>"""
@@ -771,10 +1208,9 @@ def _html_rdns_table(domains, rdns_results) -> str:
 
 def _html_dns_tables(domains, dns_results) -> str:
     if not dns_results:
-        return ""
+        return '<div class="empty-state">No DNS record data available.</div>'
 
-    sections = ["<h2>DNS inventory</h2>"]
-
+    cards = []
     for domain in domains:
         summary = dns_results.get(domain)
         if not summary:
@@ -798,26 +1234,133 @@ def _html_dns_tables(domains, dns_results) -> str:
                 f"</tr>\n"
             )
 
-        sections.append(f"""
-<div class="domain-section">
-  <h3 style="margin:24px 0 8px;color:#334155"><code>{domain}</code>
-    — {summary['total']} records</h3>
-  <p style="margin-bottom:12px">{type_pills}</p>
-  <table>
-    <thead><tr><th>Type</th><th>Name</th><th>Content</th><th>TTL</th><th></th></tr></thead>
-    <tbody>{rows}</tbody>
-  </table>
-</div>""")
+        cards.append(
+            f'<div class="domain-card" data-domain="{domain}">'
+            f'<div class="domain-card-header" onclick="toggleCard(this)">'
+            f'<h3><code>{domain}</code> <small style="color:var(--text-muted)">'
+            f'&mdash; {summary["total"]} records</small></h3>'
+            f'<div style="display:flex;align-items:center;gap:8px">'
+            f'<span>{type_pills}</span>'
+            f'<span class="domain-card-chevron" aria-hidden="true">&#9660;</span>'
+            f'</div></div>'
+            f'<div class="domain-card-body">'
+            f'<table class="sortable"><thead><tr>'
+            f'<th>Type <span class="sort-arrow"></span></th>'
+            f'<th>Name <span class="sort-arrow"></span></th>'
+            f'<th>Content <span class="sort-arrow"></span></th>'
+            f'<th>TTL <span class="sort-arrow"></span></th>'
+            f'<th> </th></tr></thead>'
+            f'<tbody>{rows}</tbody></table>'
+            f'</div></div>'
+        )
 
-    return "\n".join(sections)
+    return f'<h2 class="section-title">DNS Inventory</h2>\n' + "\n".join(cards)
 
 
 def _html_footer() -> str:
-    return f"""
+    return """
 <div class="footer">
   Generated by <a href="https://github.com/wblv-dev/cloudflare-reporting">cloudflare-reporting</a>
-  &nbsp;·&nbsp; Read-only — no changes made to any zone.
-</div>
-</div>
-</body>
-</html>"""
+  &middot; Read-only &mdash; no changes made to any zone.
+</div>"""
+
+
+def _html_script() -> str:
+    return """
+<script>
+/* ── Theme toggle ──────────────────────────────────────────── */
+function toggleTheme(){
+  var html=document.documentElement;
+  var btn=document.querySelector('.theme-toggle');
+  if(html.getAttribute('data-theme')==='dark'){
+    html.removeAttribute('data-theme');
+    btn.innerHTML='&#9790; Dark mode';
+    localStorage.setItem('cf-audit-theme','light');
+  }else{
+    html.setAttribute('data-theme','dark');
+    btn.innerHTML='&#9788; Light mode';
+    localStorage.setItem('cf-audit-theme','dark');
+  }
+}
+(function(){
+  var saved=localStorage.getItem('cf-audit-theme');
+  if(saved==='dark'){
+    document.documentElement.setAttribute('data-theme','dark');
+    var btn=document.querySelector('.theme-toggle');
+    if(btn) btn.innerHTML='&#9788; Light mode';
+  }
+})();
+
+/* ── Tab switching ─────────────────────────────────────────── */
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){
+      b.classList.remove('active');
+      b.setAttribute('aria-selected','false');
+    });
+    document.querySelectorAll('.tab-panel').forEach(function(p){
+      p.classList.remove('active');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected','true');
+    var panel=document.getElementById(btn.getAttribute('data-tab'));
+    if(panel) panel.classList.add('active');
+  });
+});
+
+/* ── Collapsible cards ─────────────────────────────────────── */
+function toggleCard(header){
+  var card=header.parentElement;
+  card.classList.toggle('open');
+}
+
+/* ── Search / filter ───────────────────────────────────────── */
+var searchInput=document.getElementById('domain-search');
+if(searchInput){
+  searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    /* Filter domain cards */
+    document.querySelectorAll('.domain-card').forEach(function(card){
+      var domain=(card.getAttribute('data-domain')||'').toLowerCase();
+      card.style.display=(!q||domain.indexOf(q)!==-1)?'':'none';
+    });
+    /* Filter table rows with data-domain */
+    document.querySelectorAll('tr[data-domain]').forEach(function(row){
+      var domain=(row.getAttribute('data-domain')||'').toLowerCase();
+      row.style.display=(!q||domain.indexOf(q)!==-1)?'':'none';
+    });
+  });
+}
+
+/* ── Sortable tables ───────────────────────────────────────── */
+document.querySelectorAll('table.sortable').forEach(function(table){
+  var headers=table.querySelectorAll('th');
+  headers.forEach(function(th,colIdx){
+    th.addEventListener('click',function(){
+      var tbody=table.querySelector('tbody');
+      if(!tbody) return;
+      var rows=Array.from(tbody.querySelectorAll('tr'));
+      var isAsc=th.classList.contains('sort-asc');
+      /* Clear all sort classes in this table */
+      headers.forEach(function(h){h.classList.remove('sort-asc','sort-desc');});
+      if(isAsc){
+        th.classList.add('sort-desc');
+      }else{
+        th.classList.add('sort-asc');
+      }
+      var dir=th.classList.contains('sort-asc')?1:-1;
+      rows.sort(function(a,b){
+        var aText=(a.children[colIdx]?a.children[colIdx].textContent:'').trim().toLowerCase();
+        var bText=(b.children[colIdx]?b.children[colIdx].textContent:'').trim().toLowerCase();
+        var aNum=parseFloat(aText);
+        var bNum=parseFloat(bText);
+        if(!isNaN(aNum)&&!isNaN(bNum)) return (aNum-bNum)*dir;
+        if(aText<bText) return -1*dir;
+        if(aText>bText) return 1*dir;
+        return 0;
+      });
+      rows.forEach(function(row){tbody.appendChild(row);});
+    });
+  });
+});
+</script>"""
