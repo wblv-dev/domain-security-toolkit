@@ -34,6 +34,10 @@ GRADE_CLASS = {
 }
 
 
+# Em dash for use in f-string expressions (backslash escapes not allowed in Python 3.10 f-exprs)
+_DASH = "\u2014"
+
+
 def _worst(grades: List[str]) -> str:
     if not grades:
         return "INFO"
@@ -827,8 +831,8 @@ def _html_overview_domain_cards(
             for r in sec["results"]:
                 sec_rows += (
                     f'<tr><td>{_tip(r["label"])}</td>'
-                    f'<td><code>{_esc(r.get("recommended", "\u2014"))}</code></td>'
-                    f'<td><code>{_esc(r.get("actual", "\u2014"))}</code></td>'
+                    f'<td><code>{_esc(r.get("recommended", _DASH))}</code></td>'
+                    f'<td><code>{_esc(r.get("actual", _DASH))}</code></td>'
                     f'<td>{_badge(r["grade"])}</td></tr>'
                 )
             body_parts.append(
@@ -859,7 +863,7 @@ def _html_overview_domain_cards(
                 f'<td><small>{mx_text}</small></td>'
                 f'<td>{_badge(spf["grade"])} <small>{_esc(spf["reason"])}</small></td>'
                 f'<td>{_badge(dmarc["grade"])} <small>{_esc(dmarc["reason"])}</small></td>'
-                f'<td>{"&#10003; " + str(dkim_count) + " selector(s)" if dkim_count else "\u2014"}</td>'
+                f'<td>{"&#10003; " + str(dkim_count) + " selector(s)" if dkim_count else _DASH}</td>'
                 f'</tr></tbody></table>'
             )
 
@@ -873,7 +877,7 @@ def _html_overview_domain_cards(
                 f'<th>{_tip("Domain expiry")}</th>'
                 f'<th>{_tip("Transfer lock")}</th></tr></thead>'
                 f'<tbody><tr>'
-                f'<td>{_esc(reg.get("registrar", "\u2014"))}</td>'
+                f'<td>{_esc(reg.get("registrar", _DASH))}</td>'
                 f'<td>{_badge(exp.get("grade", "INFO"))} <small>{_esc(exp.get("reason", ""))}</small></td>'
                 f'<td>{_badge(lock.get("grade", "INFO"))} '
                 f'<small>{"Locked" if lock.get("locked") else "Unlocked"}</small></td>'
@@ -913,7 +917,7 @@ def _html_registrar_table(domains, registrar_results) -> str:
 
         rows += (
             f'<tr data-domain="{_esc(domain)}"><td><code>{_esc(domain)}</code></td>'
-            f"<td>{_esc(result.get('registrar', '\u2014'))}</td>"
+            f"<td>{_esc(result.get('registrar', _DASH))}</td>"
             f"<td>{_badge(exp.get('grade', 'INFO'))} <small>{_esc(exp.get('reason', ''))}</small></td>"
             f"<td>{_badge(lock.get('grade', 'INFO'))} <small>{'Locked' if lock.get('locked') else 'Unlocked'}</small></td>"
             f"<td><small>{ns}</small></td></tr>\n"
@@ -1023,8 +1027,8 @@ def _html_security_table(domains, security_results) -> str:
         for r in sec["results"]:
             rows += (
                 f'<tr><td>{_tip(r["label"])}</td>'
-                f'<td><code>{_esc(r.get("recommended", "\u2014"))}</code></td>'
-                f'<td><code>{_esc(r.get("actual", "\u2014"))}</code></td>'
+                f'<td><code>{_esc(r.get("recommended", _DASH))}</code></td>'
+                f'<td><code>{_esc(r.get("actual", _DASH))}</code></td>'
                 f'<td>{_badge(r["grade"])}</td>'
                 f'<td>{_esc(r.get("note", ""))}</td></tr>\n'
             )
@@ -1167,7 +1171,7 @@ def _html_blacklist_table(domains, blacklist_results) -> str:
             f'<tr data-domain="{_esc(domain)}"><td><code>{_esc(domain)}</code></td>'
             f"<td>{_badge(result.get('grade', 'INFO'))} "
             f"<small>{_esc(result.get('reason', ''))}</small></td>"
-            f"<td>{detail or '\u2014'}</td></tr>\n"
+            f"<td>{detail or _DASH}</td></tr>\n"
         )
 
     return f"""
@@ -1196,7 +1200,7 @@ def _html_rdns_table(domains, rdns_results) -> str:
         detail = ""
         if ptr_results:
             detail = "<br>".join(
-                f"<small>{_esc(r.get('ip', ''))} &rarr; {_esc(r.get('ptr', '\u2014'))} "
+                f"<small>{_esc(r.get('ip', ''))} &rarr; {_esc(r.get('ptr', _DASH))} "
                 f"{'&#10003;' if r.get('fcrdns') else '&#10007;'}</small>"
                 for r in ptr_results[:5]
             )
@@ -1205,7 +1209,7 @@ def _html_rdns_table(domains, rdns_results) -> str:
             f'<tr data-domain="{_esc(domain)}"><td><code>{_esc(domain)}</code></td>'
             f"<td>{_badge(result.get('grade', 'INFO'))} "
             f"<small>{_esc(result.get('reason', ''))}</small></td>"
-            f"<td>{detail or '\u2014'}</td></tr>\n"
+            f"<td>{detail or _DASH}</td></tr>\n"
         )
 
     return f"""
