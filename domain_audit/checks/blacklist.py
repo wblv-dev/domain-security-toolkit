@@ -5,7 +5,6 @@ Resolves MX records to IP addresses and checks each IP against major
 public DNS blacklists. All checks are pure DNS lookups.
 """
 
-import asyncio
 from typing import Dict, List, Optional
 
 from domain_audit.lib import dns_resolver as resolver

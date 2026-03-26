@@ -81,7 +81,11 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--domains", nargs="+", metavar="DOMAIN",
-        help="domains to audit (required unless using --cloudflare-token for auto-discovery)",
+        help="domains to audit (required unless using --domains-file or --cloudflare-token)",
+    )
+    p.add_argument(
+        "--domains-file", metavar="FILE",
+        help="file containing domains to audit, one per line",
     )
     p.add_argument(
         "--cloudflare-token", metavar="TOKEN",
@@ -150,6 +154,34 @@ def _collect_all_grades(
     return grades
 
 
+def normalise_domain(raw: str) -> str:
+    """Clean a domain input: strip whitespace, protocol, path, trailing dot."""
+    d = raw.strip().lower()
+    # Strip protocol
+    for prefix in ("https://", "http://"):
+        if d.startswith(prefix):
+            d = d[len(prefix):]
+    # Strip path, query, fragment
+    d = d.split("/")[0].split("?")[0].split("#")[0]
+    # Strip port
+    if ":" in d:
+        d = d.split(":")[0]
+    # Strip trailing dot (FQDN notation)
+    d = d.rstrip(".")
+    return d
+
+
+def _load_domains_file(path: str) -> list:
+    """Load domains from a file, one per line. Skips blanks and comments."""
+    domains = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                domains.append(line)
+    return domains
+
+
 async def _run_audit(args: argparse.Namespace) -> int:
     # Configure concurrency limits
     from domain_audit.lib.concurrency import sem
@@ -164,12 +196,32 @@ async def _run_audit(args: argparse.Namespace) -> int:
     token = args.cloudflare_token or os.environ.get("CF_API_TOKEN", "") or config.CF_API_TOKEN
     has_cf = bool(token)
 
-    # Domains: required unless CF token can auto-discover
-    domains_filter = args.domains or config.DOMAINS
+    # Collect domains from all sources
+    raw_domains = []
+    if args.domains:
+        raw_domains.extend(args.domains)
+    if args.domains_file:
+        try:
+            raw_domains.extend(_load_domains_file(args.domains_file))
+        except FileNotFoundError:
+            logger.critical("Domains file not found: %s", args.domains_file)
+            return 1
+        except Exception as e:
+            logger.critical("Error reading domains file: %s", e)
+            return 1
+    if not raw_domains:
+        raw_domains.extend(config.DOMAINS)
+
+    # Normalise all domains (strip URLs, trailing dots, whitespace)
+    domains_filter = list(dict.fromkeys(
+        normalise_domain(d) for d in raw_domains if normalise_domain(d)
+    ))
+
     if not domains_filter and not has_cf:
         logger.critical(
-            "No domains specified. Use --domains or provide a Cloudflare token for auto-discovery.\n"
-            "  domain-audit --domains example.com example.org\n"
+            "No domains specified. Use --domains, --domains-file, or --cloudflare-token.\n"
+            "  domain-audit --domains example.com\n"
+            "  domain-audit --domains-file domains.txt\n"
             "  domain-audit --cloudflare-token YOUR_TOKEN"
         )
         return 1

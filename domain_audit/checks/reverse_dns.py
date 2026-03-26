@@ -5,7 +5,6 @@ Resolves MX hostnames to IPs, performs PTR lookups, and verifies
 Forward-Confirmed reverse DNS (FCrDNS). All checks are pure DNS.
 """
 
-import asyncio
 from typing import Dict, List
 
 import dns.reversename

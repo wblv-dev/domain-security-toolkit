@@ -8,10 +8,12 @@ CSV:      machine-readable compliance summary, one row per domain.
 
 import csv
 import html
+import json as _json
+import os as _os
 from datetime import datetime, timezone
 from typing import Dict, List
 
-from domain_audit.lib.remediation import get_tooltip, collect_remediations
+from domain_audit.lib.remediation import get_tooltip, collect_remediations, TOOLTIPS, STANDARDS
 
 
 # ── Grade helpers ─────────────────────────────────────────────────────────────
@@ -135,11 +137,11 @@ def write_markdown(
 def _md_header(domains: List[str]) -> str:
     domain_list = ", ".join(f"`{d}`" for d in domains)
     return (
-        f"# Cloudflare DNS Audit Report\n\n"
+        f"# Domain Security Audit Report\n\n"
         f"**Generated:** {_ts()}  \n"
         f"**Domains:** {domain_list}  \n"
         f"**Tool:** [domain-security-toolkit](https://github.com/wblv-dev/domain-security-toolkit)\n\n"
-        f"> Live DNS validation and Cloudflare API audit. "
+        f"> Live DNS validation and security audit. "
         f"Grades reflect published state at time of generation.\n\n---\n"
     )
 
@@ -291,9 +293,9 @@ def _md_email_standards(domain: str, result: dict) -> str:
 
 
 def _md_dns(domain: str, summary: dict) -> str:
+    proxied_note = f"  (**{summary['proxied']}** proxied)" if summary['proxied'] else ""
     lines = [f"## DNS inventory — `{domain}`\n",
-             f"**Total:** {summary['total']} records  "
-             f"(**{summary['proxied']}** proxied through Cloudflare)\n",
+             f"**Total:** {summary['total']} records{proxied_note}\n",
              "**By type:**\n",
              "| Type | Count |", "|------|-------|"]
     for rtype, count in summary["by_type"].items():
@@ -452,12 +454,6 @@ def write_csv(
 
 # ══════════════════════════════════════════════════════════════════════════════
 # HTML — template-based, data injected as JSON
-
-import json as _json
-import os as _os
-
-from domain_audit.lib.remediation import collect_remediations, TOOLTIPS, STANDARDS
-
 
 def _read_chartjs() -> str:
     p = _os.path.join("/tmp", "chartjs.min.js")

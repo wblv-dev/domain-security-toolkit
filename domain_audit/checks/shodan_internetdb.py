@@ -7,7 +7,6 @@ open ports, known CVEs, and service tags. Completely free, no API key needed.
 https://internetdb.shodan.io/docs
 """
 
-import asyncio
 from typing import Dict, List, Optional
 
 import aiohttp

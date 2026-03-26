@@ -70,6 +70,11 @@ pip install .
 domain-audit --domains yourdomain.com
 ```
 
+**Multiple domains from a file** (one per line — ideal for large audits):
+```bash
+domain-audit --domains-file my-domains.txt
+```
+
 That's it. Open `audit_report.html` in your browser.
 
 ---
@@ -215,7 +220,8 @@ domain-audit --domains example.com --cloudflare-token YOUR_TOKEN
 ## All CLI options
 
 ```
-domain-audit --domains DOMAIN [DOMAIN ...]   Domains to audit (required)
+domain-audit --domains DOMAIN [DOMAIN ...]   Domains to audit
+             --domains-file FILE              Load domains from file (one per line)
              --cloudflare-token TOKEN         Cloudflare API token (optional)
              --output-dir DIR                 Where to save reports (default: .)
              --format {html,md,csv}           Which reports (default: all)

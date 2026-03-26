@@ -16,7 +16,7 @@ import sys
 
 def main():
     p = argparse.ArgumentParser(
-        description="Launch the Datasette dashboard for Cloudflare audit results.",
+        description="Launch the Datasette dashboard for domain audit results.",
     )
     p.add_argument(
         "--db", default="audit_history.db",

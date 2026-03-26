@@ -7,7 +7,6 @@ individual test results. Completely free, no API key needed.
 https://github.com/mozilla/http-observatory
 """
 
-import asyncio
 from typing import Dict, List, Optional
 
 import aiohttp

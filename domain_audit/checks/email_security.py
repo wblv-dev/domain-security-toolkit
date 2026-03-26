@@ -6,7 +6,6 @@ actually published for MX, SPF, DMARC, and common DKIM selectors.
 Runs all domain checks concurrently via asyncio.
 """
 
-import asyncio
 from typing import Dict, List
 
 from domain_audit.lib import dns_resolver

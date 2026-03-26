@@ -6,7 +6,6 @@ a domain. Reveals hidden subdomains, unauthorized certificates, and
 shadow IT. No API key required.
 """
 
-import asyncio
 from typing import Dict, List, Optional
 from datetime import datetime
 

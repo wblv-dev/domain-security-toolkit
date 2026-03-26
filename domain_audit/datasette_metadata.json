@@ -1,5 +1,5 @@
 {
-  "title": "Cloudflare Security Audit Dashboard",
+  "title": "Domain Security Audit Dashboard",
   "description": "Interactive dashboard for domain-security-toolkit audit results",
   "databases": {
     "audit_history": {

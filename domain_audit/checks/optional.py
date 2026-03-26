@@ -248,13 +248,3 @@ async def check_all(domains: List[str]) -> Dict[str, dict]:
     return await throttled_gather(
         {d: check_domain(d) for d in domains}, label="OSINT check"
     )
-
-
-def has_any_keys() -> bool:
-    """Check if any optional integration keys are configured."""
-    return any(_key(k) for k in _KEYS)
-
-
-def active_integrations() -> List[str]:
-    """Return list of configured integration names."""
-    return [name for name, env in _KEYS.items() if os.environ.get(env, "")]

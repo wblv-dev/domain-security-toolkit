@@ -412,7 +412,8 @@ class TestConfigurationSecurity:
             "xoxb-", "xoxp-",      # Slack tokens
             "Bearer eyJ",           # JWT tokens
         ]
-        for pattern in glob.glob("**/*.py", recursive=True):
+        base_dir = os.path.join(os.path.dirname(__file__), "..", "domain_audit")
+        for pattern in glob.glob(os.path.join(base_dir, "**/*.py"), recursive=True):
             if "test_security.py" in pattern:
                 continue  # Skip this file (contains the patterns as strings)
             with open(pattern, encoding="utf-8") as f:

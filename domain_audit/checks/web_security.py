@@ -5,7 +5,6 @@ Fetches the domain over HTTPS and analyses response headers for security
 best practices. All checks are simple HTTP GET requests — no API keys needed.
 """
 
-import asyncio
 from typing import Dict, List, Optional
 
 import aiohttp

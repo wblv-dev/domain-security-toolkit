@@ -87,7 +87,7 @@ def _check_caa_sync(domain: str) -> dict:
     raw = resolver.query(domain, "CAA")
 
     if not raw:
-        return grade_caa([], is_cloudflare=True)
+        return grade_caa([], is_cloudflare=False)
 
     records = []
     for r in raw:
@@ -100,10 +100,10 @@ def _check_caa_sync(domain: str) -> dict:
                 "value": parts[2].strip('"'),
             })
 
-    return grade_caa(records, is_cloudflare=True)
+    return grade_caa(records, is_cloudflare=False)
 
 
-def grade_caa(records: List[dict], is_cloudflare: bool = True) -> dict:
+def grade_caa(records: List[dict], is_cloudflare: bool = False) -> dict:
     """Grade CAA record configuration."""
     if not records:
         return {
