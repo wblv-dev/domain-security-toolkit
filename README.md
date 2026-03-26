@@ -40,20 +40,7 @@ $ cf-audit
 
 ## Install
 
-<details open>
-<summary><strong>macOS / Linux</strong></summary>
-
-```bash
-git clone https://github.com/wblv-dev/cloudflare-reporting
-cd cloudflare-reporting
-python3 -m venv .venv
-source .venv/bin/activate
-pip install .
-```
-</details>
-
-<details>
-<summary><strong>Windows (PowerShell)</strong></summary>
+**Windows (PowerShell):**
 
 ```powershell
 git clone https://github.com/wblv-dev/cloudflare-reporting
@@ -64,7 +51,16 @@ pip install .
 ```
 
 > If PowerShell blocks the activate script, run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` first.
-</details>
+
+**macOS / Linux:**
+
+```bash
+git clone https://github.com/wblv-dev/cloudflare-reporting
+cd cloudflare-reporting
+python3 -m venv .venv
+source .venv/bin/activate
+pip install .
+```
 
 <details>
 <summary>Don't have Python?</summary>
