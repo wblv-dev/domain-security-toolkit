@@ -1,59 +1,48 @@
 <div align="center">
 
-# Domain Security Toolkit
+<h1>🔒 Domain Security Toolkit</h1>
 
 **Open-source domain security auditing backed by industry standards.**
 
-Run one command against any domain. Get a customer-ready security report.
+Run one command. Get a customer-ready security report for any domain.
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-235%20passing-brightgreen)](https://github.com/wblv-dev/domain-security-toolkit/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Checks](https://img.shields.io/badge/checks-35%2B-informational)](https://github.com/wblv-dev/domain-security-toolkit)
+[![Checks](https://img.shields.io/badge/security%20checks-35%2B-8b5cf6)](https://github.com/wblv-dev/domain-security-toolkit)
+[![Standards](https://img.shields.io/badge/standards-NIST%20%7C%20OWASP%20%7C%20NCSC%20%7C%20GDPR-f59e0b)](https://github.com/wblv-dev/domain-security-toolkit)
+
+<br>
+
+[Quick start](#quick-start) · [What it checks](#what-it-checks) · [Report output](#what-you-get) · [CLI reference](#all-cli-options) · [OSINT enrichment](#optional-osint-enrichment) · [Cloudflare](#optional-cloudflare-integration) · [Troubleshooting](#troubleshooting)
 
 </div>
 
 ---
 
-```
-$ domain-audit --domains example.com
+<!-- TODO: Add screenshot of HTML report dashboard here -->
+<!-- <p align="center"><img src="docs/screenshot.png" alt="Domain Security Report" width="800"></p> -->
 
-[1/7] Auditing 1 domain(s) ...
-[3/7] Running live DNS and HTTP checks ...
-  [EMAIL] example.com: SPF=PASS  DMARC=PASS
-  [DNSSEC] example.com: PASS
-  [WEB] example.com: 4/6 headers
-  [SHODAN] example.com: PASS (2 ports, 0 CVEs)
-  [OBSERVATORY] example.com: B+ (score: 70)
-  [CT] example.com: PASS (12 certs, 5 subdomains)
-[7/7] Summary
-============================================================
-  example.com          SPF:PASS  DMARC:PASS  DNSSEC:PASS  Headers:4/6
+## Why?
 
-  Reports: audit_report.html, AUDIT_REPORT.md, audit_report.csv
-```
+Security teams use 6-8 different tools to audit a domain: MXToolbox for email, SSL Labs for TLS, Mozilla Observatory for headers, crt.sh for certificates, Shodan for ports, plus manual WHOIS and DNS checks. Then they compile findings into a spreadsheet.
 
-35+ security checks against any domain. No API keys needed. Every finding backed by NIST, OWASP, NCSC, CISA, or GDPR standards.
+**This tool does all of that in one command** and produces a professional HTML report you can hand directly to a customer — with charts, prioritised findings, step-by-step remediation guidance, and citations to the specific NIST, OWASP, NCSC, or GDPR standard behind each check.
+
+No API keys required. No accounts. No configuration. Just `pip install` and go.
 
 ---
 
-## Step 1: Prerequisites
+## Quick start
 
-You need **Git** and **Python 3.10+** installed.
+### 1. Prerequisites
 
 | | Windows | macOS | Linux |
 |---|---------|-------|-------|
-| **Git** | [git-scm.com](https://git-scm.com/downloads/win) (reopen PowerShell after) | `brew install git` or `xcode-select --install` | `sudo apt install git` |
-| **Python** | Search **"Python"** in Microsoft Store (recommended) | `brew install python` | `sudo apt install python3 python3-pip python3-venv` |
+| **Git** | [git-scm.com](https://git-scm.com/downloads/win) — reopen PowerShell after | `brew install git` | `sudo apt install git` |
+| **Python 3.10+** | Search **"Python"** in Microsoft Store | `brew install python` | `sudo apt install python3 python3-pip python3-venv` |
 
-Verify both work:
-```
-git --version
-python --version       # Windows
-python3 --version      # macOS/Linux
-```
-
-## Step 2: Install the toolkit
+### 2. Install
 
 **Windows (PowerShell):**
 ```powershell
@@ -64,11 +53,6 @@ python -m venv .venv
 pip install .
 ```
 
-> **PowerShell error?** If you see "cannot be loaded because running scripts is disabled", run this first:
-> ```powershell
-> Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-> ```
-
 **macOS / Linux:**
 ```bash
 git clone https://github.com/wblv-dev/domain-security-toolkit
@@ -78,36 +62,43 @@ source .venv/bin/activate
 pip install .
 ```
 
-## Step 3: Audit your domains
+> **PowerShell error?** Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` first.
+
+### 3. Audit
 
 ```bash
 domain-audit --domains yourdomain.com
 ```
 
-That's it. No accounts, no API keys, no configuration needed.
+That's it. Open `audit_report.html` in your browser.
 
-**Multiple domains:**
-```bash
-domain-audit --domains example.com example.org example.co.uk
+---
+
+## What you get
+
+```
+$ domain-audit --domains example.com
+
+[3/7] Running live DNS and HTTP checks ...
+  [EMAIL] example.com: SPF=PASS  DMARC=PASS
+  [DNSSEC] example.com: PASS
+  [WEB] example.com: 4/6 headers, security.txt=PASS
+  [SHODAN] example.com: PASS (2 ports, 0 CVEs)
+  [OBSERVATORY] example.com: B+ (score: 70)
+  [CT] example.com: 12 certs, 5 subdomains
+[7/7] Summary
+============================================================
+  example.com     SPF:PASS  DMARC:PASS  DNSSEC:PASS  Headers:4/6
+
+  Reports: audit_report.html, AUDIT_REPORT.md, audit_report.csv
 ```
 
-**With Cloudflare zone settings** (optional — need a [Cloudflare API token](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/) with Zone:Read + DNS:Read):
-```bash
-domain-audit --domains example.com --cloudflare-token YOUR_TOKEN
-```
-
-## Step 4: View your report
-
-After the audit runs, open **`audit_report.html`** in any web browser. This is your security report.
-
-| File | What it's for |
-|------|--------------|
-| **`audit_report.html`** | Open in a browser — interactive dashboard with charts, findings, fix steps. **Send this to customers.** |
-| `AUDIT_REPORT.md` | Same content in Markdown — useful for Git repos or documentation. |
-| `audit_report.csv` | One row per domain — open in Excel/Sheets for filtering and analysis. |
-| `audit_history.db` | SQLite database — accumulates data across runs for trend tracking. |
-
-**Printing / PDF:** Open the HTML file in your browser and press **Ctrl+P** (or **Cmd+P** on Mac) → Save as PDF. The report is print-optimised.
+| Output file | What it's for |
+|-------------|--------------|
+| **`audit_report.html`** | Interactive dashboard with charts, clickable findings, remediation steps, and standards references. **Send this to customers.** Print as PDF with Ctrl+P. |
+| `AUDIT_REPORT.md` | Same findings in Markdown — for Git repos or documentation. |
+| `audit_report.csv` | One row per domain — open in Excel/Sheets. |
+| `audit_history.db` | SQLite database — accumulates across runs for trend tracking. |
 
 ---
 
@@ -116,7 +107,7 @@ After the audit runs, open **`audit_report.html`** in any web browser. This is y
 <table>
 <tr><td>
 
-**Email security**
+**✉️ Email security**
 - SPF record + grading
 - DMARC policy + grading
 - DKIM (10 selectors)
@@ -124,7 +115,9 @@ After the audit runs, open **`audit_report.html`** in any web browser. This is y
 - TLSRPT
 - BIMI
 
-**DNS security**
+</td><td>
+
+**🔐 DNS security**
 - DNSSEC validation
 - CAA records
 - Dangling CNAMEs
@@ -133,7 +126,7 @@ After the audit runs, open **`audit_report.html`** in any web browser. This is y
 
 </td><td>
 
-**Web security**
+**🌐 Web security**
 - X-Frame-Options
 - Content-Security-Policy
 - X-Content-Type-Options
@@ -143,75 +136,78 @@ After the audit runs, open **`audit_report.html`** in any web browser. This is y
 - security.txt (RFC 9116)
 - Mozilla Observatory grade
 
-</td><td>
+</td></tr>
+<tr><td>
 
-**Infrastructure**
+**🏗️ Infrastructure**
 - Domain expiry (RDAP)
-- Transfer lock
+- Transfer lock status
 - Open ports + CVEs (Shodan)
 - Certificate Transparency
 - Technology fingerprint
 
-**Cloudflare** (optional)
-- SSL mode, TLS version
+</td><td>
+
+**☁️ Cloudflare** *(optional)*
+- SSL mode
+- TLS version
 - HSTS, HTTPS redirect
-- Security level, headers
+- Security level
+- Browser Integrity Check
 - +6 more zone settings
+
+</td><td>
+
+**📋 Standards**
+
+Every finding cites:
+- NIST SP 800-52/177/81
+- OWASP Secure Headers
+- NCSC UK guidance
+- CISA BOD 18-01
+- PCI DSS v4.0
+- GDPR Article 32
+- NIS2, BSI, ENISA
 
 </td></tr>
 </table>
-
-Every finding in the report links to the standard that recommends it (NIST, OWASP, NCSC, CISA, GDPR, PCI DSS, and more).
 
 ---
 
 ## Optional: OSINT enrichment
 
-The tool works fully without any API keys. For deeper threat intelligence, you can set any of these (all have free tiers):
+The tool works fully without any API keys. For deeper intelligence, set any of these — all have free tiers:
 
-**Windows (PowerShell):**
-```powershell
-$env:VIRUSTOTAL_KEY="your_key_here"
-$env:OTX_KEY="your_key_here"
-domain-audit --domains example.com
-```
+| Service | Env var | Free tier | What it adds |
+|---------|---------|-----------|-------------|
+| [VirusTotal](https://www.virustotal.com/gui/join-us) | `VIRUSTOTAL_KEY` | 500/day | Reputation from 70+ engines |
+| [AlienVault OTX](https://otx.alienvault.com/) | `OTX_KEY` | 10K/hr | Threat intelligence feeds |
+| [AbuseIPDB](https://www.abuseipdb.com/register) | `ABUSEIPDB_KEY` | 1K/day | IP abuse scoring |
+| [Shodan](https://account.shodan.io/register) | `SHODAN_API_KEY` | 100/month | Detailed port/service data |
+| [URLhaus](https://auth.abuse.ch/) | `URLHAUS_KEY` | Fair use | Malware URL checking |
+| [Google Safe Browsing](https://developers.google.com/safe-browsing/) | `GOOGLE_SAFEBROWSING_KEY` | 10K+/day | Phishing/malware flagging |
 
-**macOS / Linux:**
 ```bash
-export VIRUSTOTAL_KEY="your_key_here"
-export OTX_KEY="your_key_here"
+# macOS / Linux
+export VIRUSTOTAL_KEY="your_key"
+domain-audit --domains example.com
+
+# Windows (PowerShell)
+$env:VIRUSTOTAL_KEY="your_key"
 domain-audit --domains example.com
 ```
-
-| Service | Env var | Free signup | What it adds |
-|---------|---------|------------|-------------|
-| VirusTotal | `VIRUSTOTAL_KEY` | [virustotal.com](https://www.virustotal.com/gui/join-us) (500/day) | Reputation from 70+ security engines |
-| AlienVault OTX | `OTX_KEY` | [otx.alienvault.com](https://otx.alienvault.com/) (10K/hr) | Threat intelligence feeds |
-| AbuseIPDB | `ABUSEIPDB_KEY` | [abuseipdb.com](https://www.abuseipdb.com/register) (1K/day) | IP abuse scoring |
-| Shodan | `SHODAN_API_KEY` | [shodan.io](https://account.shodan.io/register) (100/month) | Detailed port/service data |
-| URLhaus | `URLHAUS_KEY` | [abuse.ch](https://auth.abuse.ch/) | Malware URL checking |
-| Google Safe Browsing | `GOOGLE_SAFEBROWSING_KEY` | [developers.google.com](https://developers.google.com/safe-browsing/) | Phishing/malware flagging |
 
 ---
 
 ## Optional: Cloudflare integration
 
-If your domains use Cloudflare, adding a token unlocks 11 additional zone security checks (SSL mode, TLS version, HSTS, security level, etc.).
+Not required. Adds 11 zone security checks when provided.
 
-1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com/)
-2. **My Profile** → **API Tokens** → **Create Token**
-3. Permissions: **Zone → Zone → Read** and **Zone → DNS → Read**
-4. Zone resources: **Include → All zones**
+1. [Cloudflare dashboard](https://dash.cloudflare.com/) → **My Profile** → **API Tokens** → **Create Token**
+2. Permissions: **Zone → Zone → Read** and **Zone → DNS → Read**
 
 ```bash
 domain-audit --domains example.com --cloudflare-token YOUR_TOKEN
-```
-
-Or set it as an environment variable:
-```bash
-export CF_API_TOKEN="YOUR_TOKEN"        # macOS/Linux
-$env:CF_API_TOKEN="YOUR_TOKEN"          # Windows
-domain-audit --domains example.com
 ```
 
 ---
@@ -221,59 +217,61 @@ domain-audit --domains example.com
 ```
 domain-audit --domains DOMAIN [DOMAIN ...]   Domains to audit (required)
              --cloudflare-token TOKEN         Cloudflare API token (optional)
-             --output-dir DIR                 Where to save reports (default: current folder)
-             --format {html,md,csv}           Which reports to generate (default: all)
-             --concurrency N                  Parallel domains (default: 20, lower for slow connections)
-             --verbose                        Show detailed debug output
-             --log-file FILE                  Save full log to a file
-             --no-diff                        Don't compare with previous run
+             --output-dir DIR                 Where to save reports (default: .)
+             --format {html,md,csv}           Which reports (default: all)
+             --concurrency N                  Parallel domains (default: 20)
+             --verbose                        Debug output
+             --log-file FILE                  Save log to file
+             --no-diff                        Skip previous-run comparison
 
-domain-dashboard                              Open interactive data explorer (needs Datasette)
+domain-dashboard                              Interactive data explorer (Datasette)
 ```
 
-**Exit codes** (useful for automation):
-- `0` — all checks passed or warned
-- `1` — configuration or runtime error
-- `2` — at least one check graded FAIL
+**Exit codes:** `0` = pass/warn · `1` = error · `2` = at least one FAIL
 
 ---
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| `domain-audit: command not found` | Make sure your virtual environment is activated (`.venv\Scripts\Activate.ps1` on Windows, `source .venv/bin/activate` on Mac/Linux) |
-| `python: command not found` | Install Python — see Step 1 above |
-| `git: command not found` | Install Git — see Step 1 above. Reopen your terminal after installing. |
-| `Scripts\Activate.ps1 cannot be loaded` | Run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` in PowerShell |
-| `pip install .` fails | Make sure you're inside the `domain-security-toolkit` folder and your venv is activated |
-| Report looks broken | Make sure you open `audit_report.html` in a modern browser (Chrome, Firefox, Edge) |
-| Slow on many domains | Lower concurrency: `domain-audit --domains ... --concurrency 10` |
+| Problem | Fix |
+|---------|-----|
+| `domain-audit: command not found` | Activate your venv first (`.venv\Scripts\Activate.ps1` or `source .venv/bin/activate`) |
+| `python: command not found` | Install Python — see [prerequisites](#1-prerequisites) |
+| `git: command not found` | Install Git and reopen your terminal |
+| `Activate.ps1 cannot be loaded` | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
+| Report looks broken | Open in Chrome, Firefox, or Edge (not Internet Explorer) |
+| Slow on many domains | `domain-audit --domains ... --concurrency 10` |
 
 ---
 
-## Project structure
+## FAQ
 
-```
-domain-security-toolkit/
-├── README.md
-├── LICENSE
-├── pyproject.toml
-├── domain_audit/               # pip install .
-│   ├── cli.py                  # domain-audit command
-│   ├── dashboard.py            # domain-dashboard command
-│   ├── template.html           # HTML report template
-│   ├── checks/                 # One module per check category
-│   └── lib/                    # Reporter, database, remediation, standards
-└── tests/                      # 235 tests
-```
+<details>
+<summary><strong>Do I need a Cloudflare account?</strong></summary>
+No. Cloudflare is optional. 25+ checks work against any domain without any API keys.
+</details>
 
-## Testing
+<details>
+<summary><strong>Can I audit domains I don't own?</strong></summary>
+Yes. All checks use publicly available data (DNS records, HTTP headers, certificate transparency logs, RDAP). This is standard OSINT.
+</details>
 
-```bash
-pip install pytest
-python -m pytest tests/ -v
-```
+<details>
+<summary><strong>Is this tool free?</strong></summary>
+Yes. MIT licensed. Free to use, modify, and distribute — including commercially.
+</details>
+
+<details>
+<summary><strong>How is this different from MXToolbox / Hardenize / SecurityScorecard?</strong></summary>
+Those are web-based SaaS tools ($0-$26K/year). This is a CLI that produces a self-contained HTML report you can send to anyone. It also cites regulatory standards (NIST, OWASP, NCSC, GDPR) in every finding — most tools don't.
+</details>
+
+<details>
+<summary><strong>Can I run this on a schedule?</strong></summary>
+Yes. It's a CLI with exit codes — set up a cron job or scheduled task. Exit code 2 means failures were found.
+</details>
+
+---
 
 ## Contributing
 
@@ -282,3 +280,9 @@ Issues and pull requests welcome.
 ## License
 
 [MIT](LICENSE)
+
+---
+
+<div align="center">
+<sub>Built with Python · Backed by NIST, OWASP, NCSC, CISA, and GDPR standards</sub>
+</div>
