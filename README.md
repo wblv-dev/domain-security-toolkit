@@ -20,16 +20,35 @@ Run one command. Get a customer-ready security report for any domain.
 
 ---
 
-<!-- TODO: Add screenshot of HTML report dashboard here -->
-<!-- <p align="center"><img src="docs/screenshot.png" alt="Domain Security Report" width="800"></p> -->
+## The problem
 
-## Why?
+```mermaid
+graph LR
+    A[MXToolbox<br/>Email] --> Z[Manual<br/>spreadsheet]
+    B[SSL Labs<br/>TLS] --> Z
+    C[Observatory<br/>Headers] --> Z
+    D[crt.sh<br/>Certs] --> Z
+    E[Shodan<br/>Ports] --> Z
+    F[WHOIS<br/>Registrar] --> Z
+    Z --> R[😩 Report]
 
-Security teams use 6-8 different tools to audit a domain: MXToolbox for email, SSL Labs for TLS, Mozilla Observatory for headers, crt.sh for certificates, Shodan for ports, plus manual WHOIS and DNS checks. Then they compile findings into a spreadsheet.
+    style Z fill:#dc2626,color:#fff
+    style R fill:#dc2626,color:#fff
+```
 
-**This tool does all of that in one command** and produces a professional HTML report you can hand directly to a customer — with charts, prioritised findings, step-by-step remediation guidance, and citations to the specific NIST, OWASP, NCSC, or GDPR standard behind each check.
+## The solution
 
-No API keys required. No accounts. No configuration. Just `pip install` and go.
+```mermaid
+graph LR
+    A[domain-audit<br/>--domains example.com] --> R[📄 Customer-ready<br/>security report]
+
+    style A fill:#059669,color:#fff
+    style R fill:#059669,color:#fff
+```
+
+**One command replaces 6-8 tools.** Produces a professional HTML report with charts, prioritised findings, step-by-step fixes, and citations to NIST, OWASP, NCSC, CISA, and GDPR standards.
+
+No API keys. No accounts. No configuration. `pip install` and go.
 
 ---
 
@@ -171,6 +190,55 @@ Every finding cites:
 
 </td></tr>
 </table>
+
+---
+
+## How it works
+
+```mermaid
+flowchart TB
+    subgraph Input
+        A[domain-audit --domains example.com]
+    end
+
+    subgraph "Checks (concurrent)"
+        B[📧 Email<br/>SPF, DMARC, DKIM<br/>MTA-STS, BIMI]
+        C[🔐 DNS<br/>DNSSEC, CAA<br/>dangling CNAMEs]
+        D[🌐 Web<br/>HTTP headers<br/>security.txt]
+        E[🏗️ Infrastructure<br/>RDAP, Shodan<br/>crt.sh]
+        F[☁️ Cloudflare<br/>Zone settings<br/>optional]
+        G[🔎 OSINT<br/>VirusTotal, OTX<br/>optional]
+    end
+
+    subgraph Output
+        H[📄 HTML Report]
+        I[📝 Markdown]
+        J[📊 CSV]
+        K[🗄️ SQLite History]
+    end
+
+    A --> B & C & D & E & F & G
+    B & C & D & E & F & G --> H & I & J & K
+
+    style A fill:#3b82f6,color:#fff
+    style H fill:#059669,color:#fff
+```
+
+Every check is a **declarative definition** — adding a new check means adding a dict, not writing new logic:
+
+```python
+# Adding a new zone security check is one dict entry:
+{
+    "setting":     "browser_check",
+    "label":       "Browser Integrity Check",
+    "recommended": "on",
+    "values_pass": {"on"},
+    "values_fail": {"off"},
+    "explanation":  "Blocks requests with suspicious HTTP headers.",
+}
+```
+
+Every finding automatically gets grading, remediation guidance, standards citations, and report output — because all of that flows from the check definition.
 
 ---
 
