@@ -4,8 +4,8 @@ domain-audit — Domain Security Audit Toolkit.
 
 Runs 35+ security checks against any domain: TLS, email auth, HTTP headers,
 DNSSEC, certificates, OSINT, and optionally Cloudflare zone settings.
-Produces customer-ready HTML reports with remediation guidance backed by
-NIST, OWASP, NCSC, CISA, and GDPR standards.
+Produces customer-ready HTML reports with remediation guidance aligned
+with published recommendations from NIST, OWASP, NCSC, CISA, and GDPR.
 
 Usage:
     domain-audit --domains example.com example.org
@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
             "Runs 35+ checks against any domain, covering TLS, email auth,\n"
             "HTTP headers, DNSSEC, certificates, OSINT, and optionally\n"
             "Cloudflare zone settings. Produces customer-ready HTML reports\n"
-            "with remediation guidance backed by NIST, OWASP, NCSC, and GDPR.\n\n"
+            "with remediation guidance aligned with NIST, OWASP, NCSC, and GDPR.\n\n"
             "Checks performed:\n"
             "  Email security   SPF, DMARC, DKIM, MTA-STS, TLSRPT, BIMI\n"
             "  DNS security     DNSSEC, CAA, dangling CNAMEs, blacklists, rDNS\n"

@@ -29,7 +29,7 @@
 > ```
 > Open `audit_report.html`. Done.
 
-One command. 35+ checks. Professional report with prioritised findings, step-by-step remediation, and regulatory standard citations (NIST, OWASP, NCSC, CISA, GDPR).
+One command. 35+ checks. Professional report with prioritised findings, step-by-step remediation guidance, and references to relevant NIST, OWASP, NCSC, CISA, and GDPR recommendations.
 
 No API keys. No accounts. No configuration.
 
@@ -367,5 +367,5 @@ Issues and pull requests welcome.
 ---
 
 <div align="center">
-<sub>Built with Python · Backed by NIST, OWASP, NCSC, CISA, and GDPR standards</sub>
+<sub>Built with Python · Checks aligned with NIST, OWASP, NCSC, CISA, and GDPR guidance</sub>
 </div>
