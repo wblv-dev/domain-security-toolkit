@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <a href="https://wellbelove.org/domain-security-toolkit/"><strong>View the project page</strong></a>
+</p>
+
+<p align="center">
   <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white" alt="Python 3.10+"></a>
   <a href="https://github.com/wblv-dev/domain-security-toolkit/actions"><img src="https://img.shields.io/badge/tests-255%20passing-brightgreen" alt="Tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License"></a>
