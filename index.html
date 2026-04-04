@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Domain Security Toolkit — Open source Python tool for automated domain security auditing. TLS, DNS, email authentication, OSINT.">
+<title>Domain Security Toolkit — Harry Wellbelove</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/style.css">
+</head>
+<body>
+
+<!-- ── NAV ─────────────────────────────────────────────────── -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-mark" href="/">wblv.dev</a>
+    <button class="nav-toggle" aria-label="Menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/about/">About</a></li>
+      <li><a href="/projects/">Projects</a></li>
+      <li><a href="/blog/">Blog</a></li>
+      <li><a href="/contact/">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ── MAIN ────────────────────────────────────────────────── -->
+<main>
+<div class="wrap page-content">
+
+  <!-- BREADCRUMB -->
+  <div style="margin-bottom:32px; font-family:var(--font-mono); font-size:10px; color:var(--dim); letter-spacing:0.1em;" class="fade-in">
+    <a href="/projects/" style="color:var(--dim); text-decoration:none; transition:color 0.15s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--dim)'">Projects</a>
+    <span style="margin:0 10px;">→</span>
+    <span style="color:var(--muted);">Domain Security Toolkit</span>
+  </div>
+
+  <!-- PROJECT HERO -->
+  <section class="project-hero fade-in">
+
+    <div class="project-meta-row">
+      <span class="tag tag-dim">Open Source</span>
+      <span class="tag tag-accent">Python</span>
+      <span class="tag tag-dim">Security Tooling</span>
+    </div>
+
+    <h1 class="display-lg" style="margin-bottom:20px;">
+      Domain Security<br><em class="accent">Toolkit</em>
+    </h1>
+
+    <p class="italic-statement" style="font-size:clamp(15px,1.8vw,19px); margin-bottom:32px; max-width:640px;">
+      An automated domain security auditing tool that runs 35+ checks and produces
+      customer-ready reports — built against real client domains where the findings
+      were production issues, not synthetic test cases.
+    </p>
+
+    <div class="project-links">
+      <a class="btn btn-outline" href="https://github.com/wblv-dev/domain-security-toolkit" target="_blank" rel="noopener">
+        ↗ GitHub Repository
+      </a>
+    </div>
+
+  </section>
+
+  <!-- CONTENT -->
+  <div class="project-body fade-in-2">
+
+    <h2>The problem it solves</h2>
+    <p>
+      Domain security posture is one of the most consistently weak areas across SME clients.
+      Email authentication is misconfigured, TLS is on outdated versions, HSTS isn't enforced,
+      DNSSEC isn't deployed, and nobody has a clear picture of what's exposed. Running manual
+      checks across 50+ domains per client is not sustainable.
+    </p>
+    <p>
+      This tool was built to solve that specific problem — not as an academic exercise, but because
+      it was needed. The first version ran against <strong>wblv.uk and wellbelove.org</strong>,
+      found real issues (DMARC gaps, TLS 1.0 still enabled, HSTS disabled, Cloudflare in Flexible
+      SSL mode), and produced the remediation guidance that fixed them. It then ran against
+      customer domains as part of a WAF baseline project covering approximately 176
+      Cloudflare-managed domains.
+    </p>
+
+    <div class="callout">
+      <strong>Origin:</strong> This wasn't built to be a portfolio piece — it was built because
+      manually auditing domain security at scale is tedious and error-prone.
+      The portfolio value is a side effect.
+    </div>
+
+    <h2>What it checks</h2>
+    <p>
+      The tool runs checks across six categories, with findings mapped to the relevant
+      standard or framework where applicable.
+    </p>
+
+    <h3>TLS Configuration</h3>
+    <ul>
+      <li>Minimum TLS version enforcement (1.2 minimum, 1.3 preferred)</li>
+      <li>Cipher suite strength — detection of weak/deprecated ciphers</li>
+      <li>Certificate validity, expiry, and chain completeness</li>
+      <li>HSTS header presence and configuration (max-age, includeSubDomains, preload)</li>
+      <li>Cloudflare SSL/TLS mode detection — flags Flexible mode which breaks end-to-end encryption</li>
+    </ul>
+
+    <h3>Email Authentication</h3>
+    <ul>
+      <li>SPF record presence, syntax validation, and mechanism analysis</li>
+      <li>DKIM — checks for common selector presence and key strength</li>
+      <li>DMARC — policy level (none/quarantine/reject), pct value, reporting addresses</li>
+      <li>BIMI — brand indicator presence (optional check)</li>
+      <li>MTA-STS — mail transport security policy detection</li>
+    </ul>
+
+    <h3>HTTP Security Headers</h3>
+    <ul>
+      <li>Content-Security-Policy — presence and basic directive analysis</li>
+      <li>X-Frame-Options / frame-ancestors</li>
+      <li>X-Content-Type-Options</li>
+      <li>Referrer-Policy</li>
+      <li>Permissions-Policy</li>
+    </ul>
+
+    <h3>DNS Security</h3>
+    <ul>
+      <li>DNSSEC — validation chain from root to domain</li>
+      <li>CAA records — certificate authority authorisation</li>
+      <li>Dangling DNS — detection of DNS records pointing to unclaimed infrastructure</li>
+      <li>Zone transfer attempt (informational, not exploitative)</li>
+    </ul>
+
+    <h3>Certificate Intelligence</h3>
+    <ul>
+      <li>CT log enumeration via crt.sh — surfaces subdomains via certificate transparency</li>
+      <li>Certificate pinning detection</li>
+      <li>Multi-SAN certificate analysis</li>
+    </ul>
+
+    <h3>OSINT Exposure</h3>
+    <ul>
+      <li>WHOIS data exposure — checks for personal data in public WHOIS records</li>
+      <li>robots.txt — surfaces potentially sensitive path disclosures</li>
+      <li>Security.txt — RFC 9116 compliance check</li>
+      <li>Shodan integration (optional) — checks for known exposed services</li>
+    </ul>
+
+    <h2>Architecture</h2>
+    <p>
+      The tool is structured as a Python package with a modular checker architecture.
+      Each check category is a separate module implementing a common interface — making
+      it straightforward to add new checks without touching existing ones.
+    </p>
+
+    <div class="arch-block">domain-security-toolkit/
+├── dst/
+│   ├── __init__.py
+│   ├── cli.py              ← Entry point, argument handling
+│   ├── runner.py           ← Orchestrates check execution
+│   ├── report.py           ← HTML report generation
+│   ├── checkers/
+│   │   ├── tls.py          ← TLS/certificate checks
+│   │   ├── email.py        ← SPF/DKIM/DMARC checks
+│   │   ├── headers.py      ← HTTP security header checks
+│   │   ├── dns.py          ← DNS/DNSSEC checks
+│   │   ├── certs.py        ← CT log enumeration
+│   │   └── osint.py        ← OSINT/exposure checks
+│   └── templates/
+│       └── report.html     ← Jinja2 report template
+├── tests/
+└── pyproject.toml</div>
+
+    <h3>Report generation</h3>
+    <p>
+      Output is a self-contained HTML report — no external dependencies, no CDN calls,
+      no data sent anywhere. Each finding is classified as Pass, Warn, or Fail and mapped
+      to a remediation recommendation aligned to the relevant framework.
+    </p>
+
+    <div class="card mb-md">
+      <table class="spec-table">
+        <tr><td>Language</td><td>Python 3.11+</td></tr>
+        <tr><td>DNS</td><td>dnspython</td></tr>
+        <tr><td>TLS</td><td>ssl module + cryptography</td></tr>
+        <tr><td>HTTP</td><td>httpx (async)</td></tr>
+        <tr><td>CT logs</td><td>crt.sh API</td></tr>
+        <tr><td>Cloudflare</td><td>Cloudflare API v4 (optional)</td></tr>
+        <tr><td>Reports</td><td>Jinja2 templates</td></tr>
+        <tr><td>Output</td><td>Self-contained HTML, JSON</td></tr>
+      </table>
+    </div>
+
+    <h3>Usage</h3>
+    <div class="code-block">
+      <pre><span class="comment"># Install</span>
+pip install domain-security-toolkit
+
+<span class="comment"># Run against a domain</span>
+dst audit wellbelove.org
+
+<span class="comment"># Run with Cloudflare API integration</span>
+dst audit wellbelove.org --cloudflare-token $CF_TOKEN
+
+<span class="comment"># Output JSON for pipeline integration</span>
+dst audit wellbelove.org --output json</pre>
+    </div>
+
+    <h2>Real findings — wblv.uk and wellbelove.org</h2>
+    <p>
+      The first production run of the tool was against my own domains. The findings
+      that came back were real issues that were subsequently fixed:
+    </p>
+
+    <ul>
+      <li><strong>DMARC policy set to p=none</strong> — not enforcing, just monitoring. Upgraded to p=quarantine then p=reject.</li>
+      <li><strong>TLS 1.0 still enabled</strong> — Cloudflare defaulting to broad compatibility. Minimum set to TLS 1.2.</li>
+      <li><strong>HSTS not configured</strong> — missing header entirely. Added with 6-month max-age and includeSubDomains.</li>
+      <li><strong>Cloudflare SSL mode: Flexible</strong> — traffic between Cloudflare and origin was unencrypted. Changed to Full (Strict).</li>
+      <li><strong>No CAA records</strong> — no restriction on which CAs could issue certificates for the domain.</li>
+      <li><strong>security.txt missing</strong> — RFC 9116 non-compliant. Added at /.well-known/security.txt.</li>
+    </ul>
+
+    <div class="callout">
+      Running the tool against your own infrastructure before running it against a client's
+      is the only intellectually honest way to use it. You either fix what it finds or you
+      understand why you've accepted the risk.
+    </div>
+
+    <h2>Cloudflare compliance reporting</h2>
+    <p>
+      A secondary use case emerged from the WAF baseline project — verifying that
+      ~176 Cloudflare-managed customer domains were compliant with an agreed security
+      baseline. The tool's Cloudflare API integration queries TLS configuration, managed
+      rulesets, and custom WAF rule coverage per domain and produces a compliance
+      report against the baseline standard.
+    </p>
+    <p>
+      The formal domain onboarding procedure written alongside this tool specified
+      that every new domain added to the customer's Cloudflare account must pass
+      the compliance report before being considered operationally onboarded.
+    </p>
+
+    <h2>Framework alignment</h2>
+    <p>
+      Each finding in the report includes a framework reference where applicable:
+    </p>
+
+    <div class="card mb-md">
+      <table class="spec-table">
+        <tr><td>NIST CSF</td><td>PR.DS (Data Security), PR.AC (Access Control)</td></tr>
+        <tr><td>OWASP</td><td>A02 Cryptographic Failures, A05 Security Misconfiguration</td></tr>
+        <tr><td>NCSC</td><td>Email security guidance, TLS configuration guidance</td></tr>
+        <tr><td>CISA</td><td>Known Exploited Vulnerabilities mapping where relevant</td></tr>
+        <tr><td>GDPR</td><td>Article 32 — technical measures for data protection</td></tr>
+        <tr><td>RFC 9116</td><td>security.txt standard</td></tr>
+      </table>
+    </div>
+
+    <div class="project-links" style="margin-top:48px; padding-top:32px; border-top:1px solid var(--rule);">
+      <a class="btn btn-outline" href="https://github.com/wblv-dev/domain-security-toolkit" target="_blank" rel="noopener">
+        ↗ View on GitHub
+      </a>
+      <a class="btn btn-ghost" href="/projects/">
+        ← All projects
+      </a>
+    </div>
+
+  </div>
+
+</div>
+</main>
+
+<!-- ── FOOTER ───────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-left">© 2026 Harry Wellbelove · wellbelove.org</div>
+    <div class="footer-right">
+      <a href="/about/">About</a>
+      <a href="/projects/">Projects</a>
+      <a href="/contact/">Contact</a>
+      <a href="https://github.com/wblv-dev" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/js/nav.js"></script>
+</body>
+</html>
