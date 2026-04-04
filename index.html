@@ -55,8 +55,8 @@
 
     <p class="italic-statement" style="font-size:clamp(15px,1.8vw,19px); margin-bottom:32px; max-width:640px;">
       An automated domain security auditing tool that runs 35+ checks and produces
-      customer-ready reports — built against real client domains where the findings
-      were production issues, not synthetic test cases.
+      customer-ready reports. Developed and tested against real client domains with
+      real findings.
     </p>
 
     <div class="project-links">
@@ -78,8 +78,7 @@
       checks across 50+ domains per client is not sustainable.
     </p>
     <p>
-      This tool was built to solve that specific problem — not as an academic exercise, but because
-      it was needed. The first version ran against <strong>wblv.uk and wellbelove.org</strong>,
+      The first version ran against <strong>wblv.uk and wellbelove.org</strong>,
       found real issues (DMARC gaps, TLS 1.0 still enabled, HSTS disabled, Cloudflare in Flexible
       SSL mode), and produced the remediation guidance that fixed them. It then ran against
       customer domains as part of a WAF baseline project covering approximately 176
@@ -87,15 +86,14 @@
     </p>
 
     <div class="callout">
-      <strong>Origin:</strong> This wasn't built to be a portfolio piece — it was built because
-      manually auditing domain security at scale is tedious and error-prone.
-      The portfolio value is a side effect.
+      <strong>Origin:</strong> Manually auditing domain security at scale is tedious and error-prone.
+      I built this to fix that. The portfolio value is a side effect.
     </div>
 
     <h2>What it checks</h2>
     <p>
-      The tool runs checks across six categories, with findings mapped to the relevant
-      standard or framework where applicable.
+      The tool runs checks across six categories. Findings include the relevant
+      standard or framework reference where applicable.
     </p>
 
     <h3>TLS Configuration</h3>
@@ -150,9 +148,9 @@
 
     <h2>Architecture</h2>
     <p>
-      The tool is structured as a Python package with a modular checker architecture.
-      Each check category is a separate module implementing a common interface — making
-      it straightforward to add new checks without touching existing ones.
+      Structured as a Python package with a modular checker architecture.
+      Each check category is its own module behind a common interface, so new checks
+      don't require changes to existing ones.
     </p>
 
     <div class="arch-block">domain-security-toolkit/
@@ -175,9 +173,9 @@
 
     <h3>Report generation</h3>
     <p>
-      Output is a self-contained HTML report — no external dependencies, no CDN calls,
-      no data sent anywhere. Each finding is classified as Pass, Warn, or Fail and mapped
-      to a remediation recommendation aligned to the relevant framework.
+      Output is a self-contained HTML report with no external dependencies, no CDN calls,
+      no data sent anywhere. Each finding is classified as Pass, Warn, or Fail with a
+      remediation recommendation and framework reference.
     </p>
 
     <div class="card mb-md">
@@ -245,7 +243,7 @@ dst audit wellbelove.org --output json</pre>
 
     <h2>Framework alignment</h2>
     <p>
-      Each finding in the report includes a framework reference where applicable:
+      Each finding includes a framework reference where applicable:
     </p>
 
     <div class="card mb-md">
